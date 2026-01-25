@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Menu, PlugZap, X } from 'lucide-react';
+import { Menu, PlugZap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -231,8 +231,8 @@ const Index = () => {
                 </div>
                 <RelayListManager />
                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <X className="h-4 w-4" />
-                  Relay list is not synced to Nostr in Phase 1.
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info</span>
+                  <span>Relay list is not synced to Nostr in Phase 1.</span>
                 </div>
               </CardContent>
             </Card>
