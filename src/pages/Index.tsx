@@ -54,7 +54,7 @@ const Index = () => {
                 <div className="space-y-8">
                   <div className="space-y-2">
                     <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
-                    <h1 className="text-xl font-semibold">Operator Console</h1>
+                    <h1 className="text-base font-semibold">Lightning Node Identity</h1>
                   </div>
                   <nav className="space-y-2 text-sm">
                     {navItems.map((item) => (

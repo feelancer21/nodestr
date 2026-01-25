@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus } from 'lucide-react';
+import { ChevronDown, LogOut, UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 
 interface AccountSwitcherProps {
-  onAddAccountClick: () => void;
+  onAddAccountClick?: () => void;
 }
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
@@ -40,8 +40,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className='w-56 p-2 animate-scale-in bg-background text-foreground border border-border shadow-xl'>
-        <div className='font-medium text-sm px-2 py-1.5'>Switch Account</div>
+      <DropdownMenuContent className='w-56 p-2 animate-scale-in bg-slate-950 text-slate-100 border border-white/10 shadow-xl'>
         {otherUsers.map((user) => (
           <DropdownMenuItem
             key={user.id}
@@ -58,10 +57,10 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
           </DropdownMenuItem>
         ))}
-        {otherUsers.length > 0 && <DropdownMenuSeparator />}
+        {otherUsers.length > 0 && <DropdownMenuSeparator className='bg-white/10' />}
         <DropdownMenuItem
           onClick={() => removeLogin(currentUser.id)}
-          className='flex items-center gap-2 cursor-pointer p-2 rounded-md text-red-500'
+          className='flex items-center gap-2 cursor-pointer p-2 rounded-md text-red-400 focus:text-red-400'
         >
           <LogOut className='w-4 h-4' />
           <span>Log out</span>
