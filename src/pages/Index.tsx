@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Menu, PlugZap } from 'lucide-react';
+import { Menu, PlugZap, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
