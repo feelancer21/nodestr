@@ -6,8 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAppContext } from '@/hooks/useAppContext';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 
 interface Relay {
@@ -18,8 +16,6 @@ interface Relay {
 
 export function RelayListManager() {
   const { config, updateConfig } = useAppContext();
-  const { user } = useCurrentUser();
-  const { mutate: publishEvent } = useNostrPublish();
   const { toast } = useToast();
 
   const [relays, setRelays] = useState<Relay[]>(config.relayMetadata.relays);
@@ -49,8 +45,8 @@ export function RelayListManager() {
 
     const normalized = normalizeRelayUrl(trimmed);
     try {
-      new URL(normalized);
-      return true;
+      const parsed = new URL(normalized);
+      return parsed.protocol === 'wss:';
     } catch {
       return false;
     }
@@ -109,7 +105,6 @@ export function RelayListManager() {
   const saveRelays = (newRelays: Relay[]) => {
     const now = Math.floor(Date.now() / 1000);
 
-    // Update local config
     updateConfig((current) => ({
       ...current,
       relayMetadata: {
@@ -117,49 +112,6 @@ export function RelayListManager() {
         updatedAt: now,
       },
     }));
-
-    // Publish to Nostr if user is logged in
-    if (user) {
-      publishNIP65RelayList(newRelays);
-    }
-  };
-
-  const publishNIP65RelayList = (relayList: Relay[]) => {
-    const tags = relayList.map(relay => {
-      if (relay.read && relay.write) {
-        return ['r', relay.url];
-      } else if (relay.read) {
-        return ['r', relay.url, 'read'];
-      } else if (relay.write) {
-        return ['r', relay.url, 'write'];
-      }
-      // If neither read nor write, don't include (shouldn't happen)
-      return null;
-    }).filter((tag): tag is string[] => tag !== null);
-
-    publishEvent(
-      {
-        kind: 10002,
-        content: '',
-        tags,
-      },
-      {
-        onSuccess: () => {
-          toast({
-            title: 'Relay list published',
-            description: 'Your relay list has been published to Nostr.',
-          });
-        },
-        onError: (error) => {
-          console.error('Failed to publish relay list:', error);
-          toast({
-            title: 'Failed to publish relay list',
-            description: 'There was an error publishing your relay list to Nostr.',
-            variant: 'destructive',
-          });
-        },
-      }
-    );
   };
 
   const renderRelayUrl = (url: string): string => {
@@ -276,11 +228,6 @@ export function RelayListManager() {
         </Button>
       </div>
 
-      {!user && (
-        <p className="text-xs text-muted-foreground">
-          Log in to sync your relay list with Nostr
-        </p>
-      )}
     </div>
   );
 }
