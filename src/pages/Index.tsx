@@ -43,7 +43,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
+      <div className="mx-auto flex max-w-7xl items-stretch gap-6 px-6 py-8">
         <div className="fixed left-4 top-6 z-40 xl:hidden">
           <Sheet>
             <SheetTrigger asChild>
@@ -114,7 +114,7 @@ const Index = () => {
           </Sheet>
         </div>
 
-        <aside className="hidden w-72 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
+        <aside className="hidden min-h-[calc(100vh-4rem)] w-72 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
           <div className="space-y-8">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
