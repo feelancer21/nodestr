@@ -274,7 +274,12 @@ const Index = () => {
                               <p className="text-sm font-medium">{alias}</p>
                               <p className="text-xs text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
                             </div>
-                            <span className="text-xs text-slate-400">{timeLabel}</span>
+                            <span
+                              className="text-xs text-slate-400"
+                              title={createdAt.toLocaleString()}
+                            >
+                              {timeLabel}
+                            </span>
                           </div>
                           <div className="flex flex-wrap gap-2 text-xs">
                             <Badge variant="secondary" className="bg-white/10 text-slate-200">
