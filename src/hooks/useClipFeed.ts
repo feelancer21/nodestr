@@ -26,7 +26,6 @@ export function useClipFeed() {
           [
             {
               kinds: [CLIP_KIND],
-              '#k': [String(CLIP_ANNOUNCEMENT)],
               since: announcementsSince,
               limit: 500,
             },
@@ -36,7 +35,7 @@ export function useClipFeed() {
 
         announcementEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok) {
+          if (result.ok && result.identifier.kind === CLIP_ANNOUNCEMENT) {
             store.store({ event, identifier: result.identifier });
           }
         });
@@ -49,7 +48,6 @@ export function useClipFeed() {
           [
             {
               kinds: [CLIP_KIND],
-              '#k': [String(CLIP_NODE_INFO)],
               since: feedSince,
               limit: 500,
             },
@@ -59,7 +57,7 @@ export function useClipFeed() {
 
         infoEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok) {
+          if (result.ok && result.identifier.kind === CLIP_NODE_INFO) {
             store.store({ event, identifier: result.identifier });
           }
         });
