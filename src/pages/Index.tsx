@@ -186,11 +186,8 @@ const Index = () => {
           <header className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900/80 to-slate-950 p-8 shadow-2xl">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-3">
-                <p className="text-sm text-emerald-200">Phase 2 — Feed Diagnostics Build</p>
-                <h2 className="text-3xl font-semibold">Node Operator Identity</h2>
-                <p className="text-sm text-slate-300">
-                  Connect your NIP-07 signer, manage relays locally, and keep the client ready for CLIP flows.
-                </p>
+                <h2 className="text-3xl font-semibold">Feed</h2>
+                <p className="text-sm text-slate-300">Overview of recent node announcements and info.</p>
               </div>
             </div>
             <LoginDialog
@@ -206,8 +203,8 @@ const Index = () => {
             <section className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Verified CLIP Feed</p>
-                  <p className="text-sm text-slate-300">Showing only validated announcements and node info.</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Feed</p>
+                  <p className="text-sm text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
                 </div>
                 <Badge variant="secondary" className="bg-white/10 text-slate-200">
                   {feed.data?.events.length ?? 0} events
@@ -245,59 +242,7 @@ const Index = () => {
               {!feed.isLoading && !feed.isError && (feed.data?.events.length ?? 0) === 0 && (
                 <Card className="border-white/10 bg-white/5 text-slate-100">
                   <CardContent className="py-12 text-center text-sm text-slate-300">
-                    No verified CLIP events yet. Check your relays or wait for announcements to appear.
-                  </CardContent>
-                </Card>
-              )}
-
-              {!feed.isLoading && !feed.isError && feed.data?.diagnostics && (
-                <Card className="border-white/10 bg-white/5 text-slate-100">
-                  <CardHeader>
-                    <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Diagnostics</CardTitle>
-                  </CardHeader>
-                  <CardContent className="text-xs text-slate-300 space-y-4">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div>Announcement query count: {feed.data.diagnostics.announcementQueryCount}</div>
-                      <div>Announcement accepted: {feed.data.diagnostics.announcementAccepted}</div>
-                      <div>Info query count: {feed.data.diagnostics.infoQueryCount}</div>
-                      <div>Info accepted: {feed.data.diagnostics.infoAccepted}</div>
-                    </div>
-                    {Object.keys(feed.data.diagnostics.verifyFailures).length > 0 && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Verification failures</p>
-                        <div className="mt-2 space-y-1">
-                          {Object.entries(feed.data.diagnostics.verifyFailures).map(([reason, count]) => (
-                            <div key={reason} className="flex items-center justify-between">
-                              <span>{reason}</span>
-                              <span>{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {Object.keys(feed.data.diagnostics.storeRejections).length > 0 && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Store rejections</p>
-                        <div className="mt-2 space-y-1">
-                          {Object.entries(feed.data.diagnostics.storeRejections).map(([reason, count]) => (
-                            <div key={reason} className="flex items-center justify-between">
-                              <span>{reason}</span>
-                              <span>{count}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {feed.data.diagnostics.errors.length > 0 && (
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Query errors</p>
-                        <div className="mt-2 space-y-1">
-                          {feed.data.diagnostics.errors.map((error) => (
-                            <div key={error}>{error}</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    No events yet. Check your relays or wait for announcements to appear.
                   </CardContent>
                 </Card>
               )}
