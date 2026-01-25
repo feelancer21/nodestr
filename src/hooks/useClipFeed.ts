@@ -4,7 +4,7 @@ import { useNostr } from '@nostrify/react';
 import { CLIP_ANNOUNCEMENT, CLIP_KIND, CLIP_NODE_INFO, verifyClipEvent } from '@/lib/clip';
 import { ClipStore } from '@/lib/clipStore';
 
-const FEED_WINDOW_SECONDS = 24 * 60 * 60;
+const FEED_WINDOW_SECONDS = 365 * 24 * 60 * 60;
 const ANNOUNCEMENT_WINDOW_SECONDS = 365 * 24 * 60 * 60;
 
 export interface ClipFeedDiagnostics {
