@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
 import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useClipFeed } from '@/hooks/useClipFeed';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -31,6 +34,7 @@ const Index = () => {
   const [loginOpen, setLoginOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const { currentUser } = useLoggedInAccounts();
+  const feed = useClipFeed();
 
   const displayProfile = useMemo(() => {
     if (!currentUser) return null;
@@ -199,31 +203,102 @@ const Index = () => {
           </header>
 
           {activeSection === 'home' && (
-            <section className="grid gap-6 lg:grid-cols-3">
-              <Card className="border-white/10 bg-white/5 text-slate-100">
-                <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Home</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-slate-200">
-                  Feed will appear here in Phase 2. Verified CLIP events only.
-                </CardContent>
-              </Card>
-              <Card className="border-white/10 bg-white/5 text-slate-100">
-                <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Search</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-slate-200">
-                  Lightning node discovery and operator resolution land in Phase 4.
-                </CardContent>
-              </Card>
-              <Card className="border-white/10 bg-white/5 text-slate-100">
-                <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Publish</CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-slate-200">
-                  Node announcement and info publishing arrive in Phase 6.
-                </CardContent>
-              </Card>
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Verified CLIP Feed</p>
+                  <p className="text-sm text-slate-300">Showing only validated announcements and node info.</p>
+                </div>
+                <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                  {feed.data?.length ?? 0} events
+                </Badge>
+              </div>
+
+              {feed.isLoading && (
+                <div className="grid gap-4">
+                  {[0, 1, 2].map((idx) => (
+                    <Card key={idx} className="border-white/10 bg-white/5 text-slate-100">
+                      <CardHeader className="space-y-3">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-48" />
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {feed.isError && (
+                <Card className="border-white/10 bg-white/5 text-slate-100">
+                  <CardHeader>
+                    <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Relay Error</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-slate-200">
+                    We couldn’t load CLIP events from your relays. Try again in a moment.
+                  </CardContent>
+                </Card>
+              )}
+
+              {!feed.isLoading && !feed.isError && (feed.data?.length ?? 0) === 0 && (
+                <Card className="border-white/10 bg-white/5 text-slate-100">
+                  <CardContent className="py-12 text-center text-sm text-slate-300">
+                    No verified CLIP events yet. Check your relays or wait for announcements to appear.
+                  </CardContent>
+                </Card>
+              )}
+
+              {!feed.isLoading && !feed.isError && (feed.data?.length ?? 0) > 0 && (
+                <div className="grid gap-4">
+                  {feed.data?.map(({ event, identifier }) => {
+                    const isAnnouncement = identifier.kind === 0;
+                    const network = identifier.network;
+                    const createdAt = new Date(event.created_at * 1000);
+                    const now = Date.now();
+                    const diffSeconds = Math.max(0, Math.floor((now - createdAt.getTime()) / 1000));
+                    const timeLabel = diffSeconds < 60
+                      ? `${diffSeconds}s ago`
+                      : diffSeconds < 3600
+                        ? `${Math.floor(diffSeconds / 60)}m ago`
+                        : diffSeconds < 86400
+                          ? `${Math.floor(diffSeconds / 3600)}h ago`
+                          : `${Math.floor(diffSeconds / 86400)}d ago`;
+
+                    const alias = identifier.pubkey.slice(0, 20);
+
+                    return (
+                      <Card key={event.id} className="border-white/10 bg-white/5 text-slate-100">
+                        <CardHeader className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{alias}</p>
+                              <p className="text-xs text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
+                            </div>
+                            <span className="text-xs text-slate-400">{timeLabel}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                              {isAnnouncement ? 'Announcement' : 'Node Info'}
+                            </Badge>
+                            {network && network !== 'mainnet' && (
+                              <Badge variant="secondary" className="bg-amber-500/20 text-amber-200">
+                                {network}
+                              </Badge>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="text-sm text-slate-300">
+                          {isAnnouncement
+                            ? 'Node Announcement (CLIP k=0).'
+                            : 'Node Info (CLIP k=1).'}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
 
