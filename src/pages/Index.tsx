@@ -35,6 +35,7 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const { currentUser } = useLoggedInAccounts();
   const feed = useClipFeed();
+  const feedEvents = feed.data ?? [];
 
   const displayProfile = useMemo(() => {
     if (!currentUser) return null;
@@ -207,7 +208,7 @@ const Index = () => {
                   <p className="text-sm text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
                 </div>
                 <Badge variant="secondary" className="bg-white/10 text-slate-200">
-                  {feed.data?.events.length ?? 0} events
+                  {feedEvents.length} events
                 </Badge>
               </div>
 
@@ -239,7 +240,7 @@ const Index = () => {
                 </Card>
               )}
 
-              {!feed.isLoading && !feed.isError && (feed.data?.events.length ?? 0) === 0 && (
+              {!feed.isLoading && !feed.isError && feedEvents.length === 0 && (
                 <Card className="border-white/10 bg-white/5 text-slate-100">
                   <CardContent className="py-12 text-center text-sm text-slate-300">
                     No events yet. Check your relays or wait for announcements to appear.
@@ -247,9 +248,9 @@ const Index = () => {
                 </Card>
               )}
 
-              {!feed.isLoading && !feed.isError && (feed.data?.events.length ?? 0) > 0 && (
+              {!feed.isLoading && !feed.isError && feedEvents.length > 0 && (
                 <div className="grid gap-4">
-                  {feed.data?.events.map(({ event, identifier }) => {
+                  {feedEvents.map(({ event, identifier }) => {
                     const isAnnouncement = identifier.kind === 0;
                     const network = identifier.network;
                     const createdAt = new Date(event.created_at * 1000);
