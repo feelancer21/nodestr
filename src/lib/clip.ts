@@ -1,4 +1,4 @@
-import { getEventHash, verifySignature } from 'nostr-tools';
+import { getEventHash, verifyEvent } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 export const CLIP_KIND = 38171;
@@ -96,7 +96,7 @@ export function parseIdentifier(event: NostrEvent): ClipIdentifier {
 
 function hasValidSignature(event: NostrEvent): boolean {
   try {
-    return verifySignature(event);
+    return verifyEvent(event);
   } catch {
     return false;
   }
