@@ -280,8 +280,19 @@ const Index = () => {
                             <Badge variant="secondary" className="bg-white/10 text-slate-200">
                               {isAnnouncement ? 'Announcement' : 'Node Info'}
                             </Badge>
-                            {network && network !== 'mainnet' && (
-                              <Badge variant="secondary" className="bg-amber-500/20 text-amber-200">
+                            {network && (
+                              <Badge
+                                variant="secondary"
+                                className={cn(
+                                  'text-xs',
+                                  network === 'mainnet' && 'bg-emerald-500/10 text-emerald-200',
+                                  network === 'testnet' && 'bg-blue-500/10 text-blue-200',
+                                  network === 'testnet4' && 'bg-indigo-500/10 text-indigo-200',
+                                  network === 'signet' && 'bg-amber-500/10 text-amber-200',
+                                  !['mainnet', 'testnet', 'testnet4', 'signet'].includes(network) &&
+                                    'bg-slate-500/10 text-slate-200'
+                                )}
+                              >
                                 {network}
                               </Badge>
                             )}
