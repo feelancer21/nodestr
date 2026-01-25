@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Menu, PlugZap } from 'lucide-react';
+import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -12,7 +12,13 @@ import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 
-const navItems = ['Home', 'Search', 'Publish', 'DMs', 'Settings'];
+const navItems = [
+  { label: 'Home', icon: Home },
+  { label: 'Search', icon: Search },
+  { label: 'Publish', icon: PenSquare },
+  { label: 'DMs', icon: MessageCircle },
+  { label: 'Settings', icon: Settings },
+];
 
 const Index = () => {
   useSeoMeta({
@@ -57,18 +63,21 @@ const Index = () => {
                     <h1 className="text-base font-semibold">Lightning Node Identity</h1>
                   </div>
                   <nav className="space-y-2 text-sm">
-                    {navItems.map((item) => (
+                    {navItems.map(({ label, icon: Icon }) => (
                       <button
-                        key={item}
+                        key={label}
                         className={cn(
                           'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                          item === 'Home'
+                          label === 'Home'
                             ? 'bg-white/10 text-white'
                             : 'text-slate-300 hover:bg-white/10 hover:text-white'
                         )}
                       >
-                        <span>{item}</span>
-                        {item === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                        <span className="flex items-center gap-2">
+                          <Icon className="h-4 w-4" />
+                          {label}
+                        </span>
+                        {label === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
                       </button>
                     ))}
                   </nav>
@@ -112,18 +121,21 @@ const Index = () => {
               <h1 className="text-base font-semibold">Lightning Node Identity</h1>
             </div>
             <nav className="space-y-2 text-sm">
-              {navItems.map((item) => (
+              {navItems.map(({ label, icon: Icon }) => (
                 <button
-                  key={item}
+                  key={label}
                   className={cn(
                     'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                    item === 'Home'
+                    label === 'Home'
                       ? 'bg-white/10 text-white'
                       : 'text-slate-300 hover:bg-white/10 hover:text-white'
                   )}
                 >
-                  <span>{item}</span>
-                  {item === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                  <span className="flex items-center gap-2">
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </span>
+                  {label === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
                 </button>
               ))}
             </nav>
@@ -217,17 +229,8 @@ const Index = () => {
               <CardHeader>
                 <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Settings</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6 text-sm text-slate-200">
-                <div>
-                  <p className="text-sm text-slate-300">
-                    Relays are stored locally in this browser. Changes apply immediately for new connections.
-                  </p>
-                </div>
-                <RelayListManager />
-                <div className="text-xs text-slate-400">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info:</span>{' '}
-                  Relay list is not synced to Nostr in Phase 1.
-                </div>
+              <CardContent className="text-sm text-slate-200">
+                Settings will be available once navigation is wired up.
               </CardContent>
             </Card>
           </section>
