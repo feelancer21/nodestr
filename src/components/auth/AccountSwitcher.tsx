@@ -40,7 +40,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
           <ChevronDown className='w-4 h-4 text-muted-foreground' />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className='w-56 p-2 animate-scale-in'>
+      <DropdownMenuContent className='w-56 p-2 animate-scale-in bg-background text-foreground border border-border shadow-xl'>
         <div className='font-medium text-sm px-2 py-1.5'>Switch Account</div>
         {otherUsers.map((user) => (
           <DropdownMenuItem
@@ -58,14 +58,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             {user.id === currentUser.id && <div className='w-2 h-2 rounded-full bg-primary'></div>}
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={onAddAccountClick}
-          className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
-        >
-          <UserPlus className='w-4 h-4' />
-          <span>Add another account</span>
-        </DropdownMenuItem>
+        {otherUsers.length > 0 && <DropdownMenuSeparator />}
         <DropdownMenuItem
           onClick={() => removeLogin(currentUser.id)}
           className='flex items-center gap-2 cursor-pointer p-2 rounded-md text-red-500'
