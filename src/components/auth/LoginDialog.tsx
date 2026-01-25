@@ -16,6 +16,7 @@ interface LoginDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onLogin: () => void;
+  defaultTab?: 'key' | 'bunker';
 }
 
 const validateNsec = (nsec: string) => {
@@ -26,7 +27,7 @@ const validateBunkerUri = (uri: string) => {
   return uri.startsWith('bunker://');
 };
 
-const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin }) => {
+const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, defaultTab = 'key' }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [nsec, setNsec] = useState('');
@@ -173,8 +174,9 @@ const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin }) =
   const hasExtension = 'nostr' in window;
   const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(false);
 
-  const renderTabs = () => (
-    <Tabs defaultValue="key" className="w-full">
+const renderTabs = () => (
+  <Tabs defaultValue={defaultTab} className="w-full">
+
       <TabsList className="grid w-full grid-cols-2 bg-muted/80 rounded-lg mb-4">
         <TabsTrigger value="key" className="flex items-center gap-2">
           <span>Secret Key</span>

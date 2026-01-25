@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertCircle, CheckCircle2, Loader2, PlugZap, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Menu, PlugZap, X } from 'lucide-react';
 import { useNostrLogin } from '@nostrify/react/login';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { RelayListManager } from '@/components/RelayListManager';
+import LoginDialog from '@/components/auth/LoginDialog';
 import { useLoginActions } from '@/hooks/useLoginActions';
 
 const navItems = ['Home', 'Search', 'Publish', 'DMs', 'Settings'];
@@ -23,6 +25,8 @@ const Index = () => {
   const { extension, logout } = useLoginActions();
   const [connectionState, setConnectionState] = useState<ConnectionState>('logged_out');
   const [errorMessage, setErrorMessage] = useState('');
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [defaultLoginTab, setDefaultLoginTab] = useState<'key' | 'bunker'>('key');
 
   const hasExtension = typeof window !== 'undefined' && 'nostr' in window;
 
@@ -45,7 +49,7 @@ const Index = () => {
     setConnectionState('logged_out');
   }, [logins]);
 
-  const handleConnect = async () => {
+  const handleExtensionLogin = async () => {
     if (!hasExtension) {
       setConnectionState('error');
       setErrorMessage('NIP-07 extension not found');
@@ -82,7 +86,89 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
-        <aside className="hidden w-56 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
+        <div className="xl:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="border-white/10 bg-white/10 text-slate-100">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 border-white/10 bg-slate-950 text-slate-100">
+              <div className="flex h-full flex-col justify-between">
+                <div className="space-y-8">
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                    <h1 className="text-2xl font-semibold">Operator Console</h1>
+                  </div>
+                  <nav className="space-y-2 text-sm">
+                    {navItems.map((item) => (
+                      <button
+                        key={item}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
+                          item === 'Home'
+                            ? 'bg-white/10 text-white'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        )}
+                      >
+                        <span>{item}</span>
+                        {item === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p className="text-sm font-medium">Log in</p>
+                    <p className="mt-2 text-xs text-slate-300">
+                      Access your account securely with your preferred method.
+                    </p>
+                    <div className="mt-4 space-y-2">
+                <Button
+                  className="w-full justify-start"
+                  onClick={handleExtensionLogin}
+                  disabled={!hasExtension || connectionState === 'connecting'}
+                >
+                  Extension
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setDefaultLoginTab('key');
+                    setLoginOpen(true);
+                  }}
+                >
+                  Nsec
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setDefaultLoginTab('bunker');
+                    setLoginOpen(true);
+                  }}
+                >
+                  Bunker
+                </Button>
+
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p className="leading-relaxed">
+                      Vibed with{' '}
+                      <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
+                        Shakespeare
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <aside className="hidden w-72 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
           <div className="space-y-8">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
@@ -105,13 +191,50 @@ const Index = () => {
               ))}
             </nav>
           </div>
-          <div className="space-y-4 text-xs text-slate-400">
-            <p className="leading-relaxed">
-              Vibed with{' '}
-              <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
-                Shakespeare
-              </a>
-            </p>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <p className="text-sm font-medium">Log in</p>
+              <p className="mt-2 text-xs text-slate-300">
+                Access your account securely with your preferred method.
+              </p>
+              <div className="mt-4 space-y-2">
+                <Button
+                  className="w-full justify-start"
+                  onClick={handleExtensionLogin}
+                  disabled={!hasExtension || connectionState === 'connecting'}
+                >
+                  Extension
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setDefaultLoginTab('key');
+                    setLoginOpen(true);
+                  }}
+                >
+                  Nsec
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    setDefaultLoginTab('bunker');
+                    setLoginOpen(true);
+                  }}
+                >
+                  Bunker
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-4 text-xs text-slate-400">
+              <p className="leading-relaxed">
+                Vibed with{' '}
+                <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
+                  Shakespeare
+                </a>
+              </p>
+            </div>
           </div>
         </aside>
 
@@ -141,9 +264,15 @@ const Index = () => {
                     Disconnect
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={handleConnect}>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setDefaultLoginTab('key');
+                      setLoginOpen(true);
+                    }}
+                  >
                     <PlugZap className="mr-2 h-4 w-4" />
-                    Connect NIP-07
+                    Log in
                   </Button>
                 )}
               </div>
@@ -167,6 +296,15 @@ const Index = () => {
                 </div>
               )}
             </div>
+            <LoginDialog
+              isOpen={loginOpen}
+              onClose={() => setLoginOpen(false)}
+              onLogin={() => {
+                setLoginOpen(false);
+                setConnectionState('connected');
+              }}
+              defaultTab={defaultLoginTab}
+            />
           </header>
 
           <section className="grid gap-6 lg:grid-cols-3">
