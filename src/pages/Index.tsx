@@ -230,9 +230,9 @@ const Index = () => {
                   </p>
                 </div>
                 <RelayListManager />
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info</span>
-                  <span>Relay list is not synced to Nostr in Phase 1.</span>
+                <div className="text-xs text-slate-400">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info:</span>{' '}
+                  Relay list is not synced to Nostr in Phase 1.
                 </div>
               </CardContent>
             </Card>
