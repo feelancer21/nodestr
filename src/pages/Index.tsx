@@ -187,8 +187,8 @@ const Index = () => {
           <header className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900/80 to-slate-950 p-8 shadow-2xl">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-3">
-                <h2 className="text-3xl font-semibold">Feed</h2>
-                <p className="text-sm text-slate-300">Overview of recent node announcements and info.</p>
+                <h2 className="text-3xl font-semibold">Work in progress</h2>
+                <p className="text-sm text-slate-300">This area is under construction and will change in later phases.</p>
               </div>
             </div>
             <LoginDialog
