@@ -210,7 +210,7 @@ const Index = () => {
                   <p className="text-sm text-slate-300">Showing only validated announcements and node info.</p>
                 </div>
                 <Badge variant="secondary" className="bg-white/10 text-slate-200">
-                  {feed.data?.length ?? 0} events
+                  {feed.data?.events.length ?? 0} events
                 </Badge>
               </div>
 
@@ -242,7 +242,7 @@ const Index = () => {
                 </Card>
               )}
 
-              {!feed.isLoading && !feed.isError && (feed.data?.length ?? 0) === 0 && (
+              {!feed.isLoading && !feed.isError && (feed.data?.events.length ?? 0) === 0 && (
                 <Card className="border-white/10 bg-white/5 text-slate-100">
                   <CardContent className="py-12 text-center text-sm text-slate-300">
                     No verified CLIP events yet. Check your relays or wait for announcements to appear.
@@ -250,9 +250,61 @@ const Index = () => {
                 </Card>
               )}
 
-              {!feed.isLoading && !feed.isError && (feed.data?.length ?? 0) > 0 && (
+              {!feed.isLoading && !feed.isError && feed.data?.diagnostics && (
+                <Card className="border-white/10 bg-white/5 text-slate-100">
+                  <CardHeader>
+                    <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Diagnostics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-xs text-slate-300 space-y-4">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div>Announcement query count: {feed.data.diagnostics.announcementQueryCount}</div>
+                      <div>Announcement accepted: {feed.data.diagnostics.announcementAccepted}</div>
+                      <div>Info query count: {feed.data.diagnostics.infoQueryCount}</div>
+                      <div>Info accepted: {feed.data.diagnostics.infoAccepted}</div>
+                    </div>
+                    {Object.keys(feed.data.diagnostics.verifyFailures).length > 0 && (
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Verification failures</p>
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(feed.data.diagnostics.verifyFailures).map(([reason, count]) => (
+                            <div key={reason} className="flex items-center justify-between">
+                              <span>{reason}</span>
+                              <span>{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {Object.keys(feed.data.diagnostics.storeRejections).length > 0 && (
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Store rejections</p>
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(feed.data.diagnostics.storeRejections).map(([reason, count]) => (
+                            <div key={reason} className="flex items-center justify-between">
+                              <span>{reason}</span>
+                              <span>{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {feed.data.diagnostics.errors.length > 0 && (
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Query errors</p>
+                        <div className="mt-2 space-y-1">
+                          {feed.data.diagnostics.errors.map((error) => (
+                            <div key={error}>{error}</div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {!feed.isLoading && !feed.isError && (feed.data?.events.length ?? 0) > 0 && (
                 <div className="grid gap-4">
-                  {feed.data?.map(({ event, identifier }) => {
+                  {feed.data?.events.map(({ event, identifier }) => {
                     const isAnnouncement = identifier.kind === 0;
                     const network = identifier.network;
                     const createdAt = new Date(event.created_at * 1000);

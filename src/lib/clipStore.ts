@@ -20,16 +20,17 @@ export interface ClipStoredEvent {
 export class ClipStore {
   private records = new Map<string, NodeState>();
 
-  store(event: ClipStoredEvent) {
+  store(event: ClipStoredEvent): { stored: boolean; reason?: string } {
     const { identifier } = event;
     const nodeState = this.getNodeState(identifier.pubkey);
 
     if (identifier.kind === CLIP_ANNOUNCEMENT) {
-      this.storeAnnouncement(nodeState, event);
-      return;
+      const reason = this.storeAnnouncement(nodeState, event);
+      return reason ? { stored: false, reason } : { stored: true };
     }
 
-    this.storeRegularEvent(nodeState, event);
+    const reason = this.storeRegularEvent(nodeState, event);
+    return reason ? { stored: false, reason } : { stored: true };
   }
 
   getEvents(kind?: ClipKind): ClipStoredEvent[] {
@@ -48,7 +49,7 @@ export class ClipStore {
     const current = nodeState.lastAnnouncement;
 
     if (current && current.createdAt >= createdAt) {
-      return;
+      return 'announcement_older_or_equal';
     }
 
     if (current && current.pubkey !== stored.event.pubkey) {
@@ -60,22 +61,25 @@ export class ClipStore {
       createdAt,
       pubkey: stored.event.pubkey,
     };
+
+    return undefined;
   }
 
   private storeRegularEvent(nodeState: NodeState, stored: ClipStoredEvent) {
     const announcement = nodeState.lastAnnouncement;
-    if (!announcement) return;
+    if (!announcement) return 'missing_announcement';
 
     if (announcement.pubkey !== stored.event.pubkey) {
-      return;
+      return 'announcement_pubkey_mismatch';
     }
 
     const existing = nodeState.events.get(stored.identifier.tagD);
     if (existing && existing.event.created_at >= stored.event.created_at) {
-      return;
+      return 'record_older_or_equal';
     }
 
     nodeState.events.set(stored.identifier.tagD, stored);
+    return undefined;
   }
 
   private getNodeState(pubkey: string): NodeState {
