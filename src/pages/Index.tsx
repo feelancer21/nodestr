@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
@@ -12,7 +11,6 @@ import LoginDialog from '@/components/auth/LoginDialog';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
-
 
 const navItems = ['Home', 'Search', 'Publish', 'DMs', 'Settings'];
 
@@ -37,7 +35,6 @@ const Index = () => {
     setLoginOpen(true);
   };
 
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto flex max-w-7xl gap-6 px-6 py-8">
@@ -53,61 +50,58 @@ const Index = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-52 border-white/10 bg-slate-950 text-slate-100 sm:w-60">
-             <div className="flex h-full flex-col justify-between">
-               <div className="space-y-8">
-                 <div className="space-y-2">
-                   <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
-                   <h1 className="text-xl font-semibold">Operator Console</h1>
-                 </div>
-                 <nav className="space-y-2 text-sm">
-                   {navItems.map((item) => (
-                     <button
-                       key={item}
-                       className={cn(
-                         'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                         item === 'Home'
-                           ? 'bg-white/10 text-white'
-                           : 'text-slate-300 hover:bg-white/10 hover:text-white'
-                       )}
-                     >
-                       <span>{item}</span>
-                       {item === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
-                     </button>
-                   ))}
-                 </nav>
-               </div>
-                   <div className="space-y-6">
-                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                       {displayProfile ? (
-                         <>
-                           <div className="space-y-1">
-                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
-                             <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
-                             <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
-                           </div>
-                           <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
-                         </>
-                       ) : (
-                         <Button className="w-full justify-start" onClick={handleLogin}>
-                           <PlugZap className="mr-2 h-4 w-4" />
-                           Log in
-                         </Button>
-                       )}
-                     </div>
-                   </div>
-
-                 <div className="space-y-2 text-xs text-slate-400">
-                   <p className="leading-relaxed">
-                     Vibed with{' '}
-                     <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
-                       Shakespeare
-                     </a>
-                   </p>
-                 </div>
-               </div>
-             </div>
-             </SheetContent>
-
+              <div className="flex h-full flex-col justify-between">
+                <div className="space-y-8">
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                    <h1 className="text-xl font-semibold">Operator Console</h1>
+                  </div>
+                  <nav className="space-y-2 text-sm">
+                    {navItems.map((item) => (
+                      <button
+                        key={item}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
+                          item === 'Home'
+                            ? 'bg-white/10 text-white'
+                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                        )}
+                      >
+                        <span>{item}</span>
+                        {item === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                    {displayProfile ? (
+                      <>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
+                          <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
+                          <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
+                        </div>
+                        <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
+                      </>
+                    ) : (
+                      <Button className="w-full justify-start" onClick={handleLogin}>
+                        <PlugZap className="mr-2 h-4 w-4" />
+                        Log in
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-2 text-xs text-slate-400">
+                    <p className="leading-relaxed">
+                      Vibed with{' '}
+                      <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
+                        Shakespeare
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
           </Sheet>
         </div>
 
