@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Menu, PlugZap, X } from 'lucide-react';
+import { nip19 } from 'nostr-tools';
+import { Menu, PlugZap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { RelayListManager } from '@/components/RelayListManager';
 import LoginDialog from '@/components/auth/LoginDialog';
+import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
+import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
+import { genUserName } from '@/lib/genUserName';
+
 
 const navItems = ['Home', 'Search', 'Publish', 'DMs', 'Settings'];
 
@@ -18,6 +23,15 @@ const Index = () => {
   });
 
   const [loginOpen, setLoginOpen] = useState(false);
+  const { currentUser } = useLoggedInAccounts();
+
+  const displayProfile = useMemo(() => {
+    if (!currentUser) return null;
+    const name = currentUser.metadata.name ?? genUserName(currentUser.pubkey);
+    const npub = nip19.npubEncode(currentUser.pubkey);
+    const shortNpub = `${npub.slice(0, 12)}…${npub.slice(-6)}`;
+    return { name, npub: shortNpub };
+  }, [currentUser]);
 
   const handleLogin = async () => {
     setLoginOpen(true);
@@ -43,7 +57,7 @@ const Index = () => {
                <div className="space-y-8">
                  <div className="space-y-2">
                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
-                   <h1 className="text-2xl font-semibold">Operator Console</h1>
+                   <h1 className="text-xl font-semibold">Operator Console</h1>
                  </div>
                  <nav className="space-y-2 text-sm">
                    {navItems.map((item) => (
@@ -62,13 +76,26 @@ const Index = () => {
                    ))}
                  </nav>
                </div>
-               <div className="space-y-6">
-                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                   <Button className="w-full justify-start" onClick={handleLogin}>
-                     <PlugZap className="mr-2 h-4 w-4" />
-                     Log in
-                   </Button>
-                 </div>
+                   <div className="space-y-6">
+                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                       {displayProfile ? (
+                         <>
+                           <div className="space-y-1">
+                             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
+                             <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
+                             <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
+                           </div>
+                           <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
+                         </>
+                       ) : (
+                         <Button className="w-full justify-start" onClick={handleLogin}>
+                           <PlugZap className="mr-2 h-4 w-4" />
+                           Log in
+                         </Button>
+                       )}
+                     </div>
+                   </div>
+
                  <div className="space-y-2 text-xs text-slate-400">
                    <p className="leading-relaxed">
                      Vibed with{' '}
@@ -88,7 +115,7 @@ const Index = () => {
           <div className="space-y-8">
             <div className="space-y-2">
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
-              <h1 className="text-2xl font-semibold">Operator Console</h1>
+              <h1 className="text-xl font-semibold">Operator Console</h1>
             </div>
             <nav className="space-y-2 text-sm">
               {navItems.map((item) => (
@@ -108,11 +135,22 @@ const Index = () => {
             </nav>
           </div>
           <div className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <Button className="w-full justify-start" onClick={handleLogin}>
-                <PlugZap className="mr-2 h-4 w-4" />
-                Log in
-              </Button>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+              {displayProfile ? (
+                <>
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
+                    <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
+                    <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
+                  </div>
+                  <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
+                </>
+              ) : (
+                <Button className="w-full justify-start" onClick={handleLogin}>
+                  <PlugZap className="mr-2 h-4 w-4" />
+                  Log in
+                </Button>
+              )}
             </div>
             <div className="space-y-4 text-xs text-slate-400">
               <p className="leading-relaxed">
@@ -130,7 +168,7 @@ const Index = () => {
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-3">
                 <p className="text-sm text-emerald-200">Phase 1 Foundation</p>
-                <h2 className="text-3xl font-semibold">Nostr Identity & Relay Control</h2>
+                <h2 className="text-3xl font-semibold">Node Operator Identity</h2>
                 <p className="text-sm text-slate-300">
                   Connect your NIP-07 signer, manage relays locally, and keep the client ready for CLIP flows.
                 </p>
