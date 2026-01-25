@@ -13,12 +13,14 @@ import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 
 const navItems = [
-  { label: 'Home', icon: Home },
-  { label: 'Search', icon: Search },
-  { label: 'Publish', icon: PenSquare },
-  { label: 'DMs', icon: MessageCircle },
-  { label: 'Settings', icon: Settings },
-];
+  { id: 'home', label: 'Home', icon: Home },
+  { id: 'search', label: 'Search', icon: Search },
+  { id: 'publish', label: 'Publish', icon: PenSquare },
+  { id: 'dms', label: 'DMs', icon: MessageCircle },
+  { id: 'settings', label: 'Settings', icon: Settings },
+] as const;
+
+type SectionId = (typeof navItems)[number]['id'];
 
 const Index = () => {
   useSeoMeta({
@@ -27,6 +29,7 @@ const Index = () => {
   });
 
   const [loginOpen, setLoginOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionId>('home');
   const { currentUser } = useLoggedInAccounts();
 
   const displayProfile = useMemo(() => {
@@ -63,12 +66,13 @@ const Index = () => {
                     <h1 className="text-base font-semibold">Lightning Node Identity</h1>
                   </div>
                   <nav className="space-y-2 text-sm">
-                    {navItems.map(({ label, icon: Icon }) => (
+                    {navItems.map(({ id, label, icon: Icon }) => (
                       <button
-                        key={label}
+                        key={id}
+                        onClick={() => setActiveSection(id)}
                         className={cn(
                           'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                          label === 'Home'
+                          activeSection === id
                             ? 'bg-white/10 text-white'
                             : 'text-slate-300 hover:bg-white/10 hover:text-white'
                         )}
@@ -77,7 +81,9 @@ const Index = () => {
                           <Icon className="h-4 w-4" />
                           {label}
                         </span>
-                        {label === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                        {activeSection === id && (
+                          <span className="text-[10px] uppercase text-emerald-300">Now</span>
+                        )}
                       </button>
                     ))}
                   </nav>
@@ -121,12 +127,13 @@ const Index = () => {
               <h1 className="text-base font-semibold">Lightning Node Identity</h1>
             </div>
             <nav className="space-y-2 text-sm">
-              {navItems.map(({ label, icon: Icon }) => (
+              {navItems.map(({ id, label, icon: Icon }) => (
                 <button
-                  key={label}
+                  key={id}
+                  onClick={() => setActiveSection(id)}
                   className={cn(
                     'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                    label === 'Home'
+                    activeSection === id
                       ? 'bg-white/10 text-white'
                       : 'text-slate-300 hover:bg-white/10 hover:text-white'
                   )}
@@ -135,7 +142,9 @@ const Index = () => {
                     <Icon className="h-4 w-4" />
                     {label}
                   </span>
-                  {label === 'Home' && <span className="text-[10px] uppercase text-emerald-300">Now</span>}
+                  {activeSection === id && (
+                    <span className="text-[10px] uppercase text-emerald-300">Now</span>
+                  )}
                 </button>
               ))}
             </nav>
@@ -189,51 +198,95 @@ const Index = () => {
             />
           </header>
 
-          <section className="grid gap-6 lg:grid-cols-3">
-            <Card className="border-white/10 bg-white/5 text-slate-100">
-              <CardHeader>
-                <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Home</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-slate-200">
-                Feed will appear here in Phase 2. Verified CLIP events only.
-              </CardContent>
-            </Card>
-            <Card className="border-white/10 bg-white/5 text-slate-100">
-              <CardHeader>
-                <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Search</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-slate-200">
-                Lightning node discovery and operator resolution land in Phase 4.
-              </CardContent>
-            </Card>
-            <Card className="border-white/10 bg-white/5 text-slate-100">
-              <CardHeader>
-                <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Publish</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-slate-200">
-                Node announcement and info publishing arrive in Phase 6.
-              </CardContent>
-            </Card>
-          </section>
+          {activeSection === 'home' && (
+            <section className="grid gap-6 lg:grid-cols-3">
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Home</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Feed will appear here in Phase 2. Verified CLIP events only.
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Search</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Lightning node discovery and operator resolution land in Phase 4.
+                </CardContent>
+              </Card>
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Publish</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Node announcement and info publishing arrive in Phase 6.
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
-          <section className="grid gap-6 lg:grid-cols-3">
-            <Card className="border-white/10 bg-white/5 text-slate-100">
-              <CardHeader>
-                <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">DMs</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-slate-200">
-                Operator-only DMs will activate in Phase 9.
-              </CardContent>
-            </Card>
-            <Card className="border-white/10 bg-white/5 text-slate-100 lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-slate-200">
-                Settings will be available once navigation is wired up.
-              </CardContent>
-            </Card>
-          </section>
+          {activeSection === 'search' && (
+            <section className="grid gap-6">
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Search</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Lightning node discovery and operator resolution land in Phase 4.
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'publish' && (
+            <section className="grid gap-6">
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Publish</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Node announcement and info publishing arrive in Phase 6.
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'dms' && (
+            <section className="grid gap-6">
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">DMs</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-slate-200">
+                  Operator-only DMs will activate in Phase 9.
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {activeSection === 'settings' && (
+            <section className="grid gap-6">
+              <Card className="border-white/10 bg-white/5 text-slate-100">
+                <CardHeader>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 text-sm text-slate-200">
+                  <div>
+                    <p className="text-sm text-slate-300">
+                      Relays are stored locally in this browser. Changes apply immediately for new connections.
+                    </p>
+                  </div>
+                  <RelayListManager />
+                  <div className="text-xs text-slate-400">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info:</span>{' '}
+                    Relay list is not synced to Nostr in Phase 1.
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+          )}
         </main>
       </div>
     </div>
