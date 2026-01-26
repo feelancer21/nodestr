@@ -3,8 +3,10 @@ import { NRelay1 } from '@nostrify/nostrify';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useAppContext } from '@/hooks/useAppContext';
 
 export function RelayTest() {
+  const { config } = useAppContext();
   const [results, setResults] = useState<{
     status: 'idle' | 'testing' | 'success' | 'error';
     message: string;
@@ -20,7 +22,7 @@ export function RelayTest() {
     setResults({ status: 'testing', message: 'Testing relay connections...' });
     const startTime = Date.now();
 
-    const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+    const relays = config.relayMetadata.relays.map((r) => r.url);
     const relayResults: Array<{ relay: string; status: 'ok' | 'failed'; message: string; duration?: number }> = [];
 
     let totalEvents = 0;
@@ -111,6 +113,7 @@ export function RelayTest() {
         <Card className="border-white/10 bg-white/5 text-slate-100">
           <CardHeader>
             <CardTitle className="text-lg text-slate-50">Connection Test</CardTitle>
+            <p className="text-sm text-slate-400 mt-2">Testing {config.relayMetadata.relays.length} relay{config.relayMetadata.relays.length !== 1 ? 's' : ''}</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button onClick={testRelays} disabled={results.status === 'testing'} className="w-full">
