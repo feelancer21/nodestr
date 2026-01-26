@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, Wifi, Settings } from 'lucide-react';
+import { Plus, X, Wifi, Settings, Activity } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -227,6 +228,15 @@ export function RelayListManager() {
           Add Relay
         </Button>
       </div>
+
+      {/* Relay Diagnostics Link */}
+      <Link
+        to="/debug/relays"
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <Activity className="h-4 w-4" />
+        Test relay connections
+      </Link>
 
     </div>
   );
