@@ -101,9 +101,6 @@ const Index = () => {
                           <Icon className="h-4 w-4" />
                           {label}
                         </span>
-                        {activeSection === id && (
-                          <span className="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Now</span>
-                        )}
                       </button>
                     ))}
                   </nav>
@@ -164,9 +161,6 @@ const Index = () => {
                     <Icon className="h-4 w-4" />
                     {label}
                   </span>
-                  {activeSection === id && (
-                    <span className="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Now</span>
-                  )}
                 </button>
               ))}
             </nav>
