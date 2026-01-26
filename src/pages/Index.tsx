@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings } from 'lucide-react';
+import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
@@ -70,7 +70,10 @@ const Index = () => {
               <div className="flex h-full flex-col justify-between">
                 <div className="space-y-8">
                   <div className="space-y-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
+                      <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                    </div>
                     <h1 className="text-base font-semibold">Lightning Node Identity</h1>
                   </div>
                   <nav className="space-y-2 text-sm">
@@ -131,7 +134,10 @@ const Index = () => {
         <aside className="hidden min-h-[calc(100vh-4rem)] w-72 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
           <div className="space-y-8">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
+                <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+              </div>
               <h1 className="text-base font-semibold">Lightning Node Identity</h1>
             </div>
             <nav className="space-y-2 text-sm">
