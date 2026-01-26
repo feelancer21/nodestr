@@ -39,6 +39,7 @@ const Index = () => {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { currentUser, removeLogin } = useLoggedInAccounts();
   const feed = useClipFeed();
   const feedEvents = feed.data ?? [];
@@ -65,7 +66,7 @@ const Index = () => {
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-7xl items-stretch gap-6 px-6 py-8">
         <div className="fixed left-4 top-6 z-40 xl:hidden">
-          <Sheet>
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
@@ -89,7 +90,10 @@ const Index = () => {
                     {navItems.map(({ id, label, icon: Icon }) => (
                       <button
                         key={id}
-                        onClick={() => setActiveSection(id)}
+                        onClick={() => {
+                          setActiveSection(id);
+                          setMobileMenuOpen(false);
+                        }}
                         className={cn(
                           'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
                           activeSection === id
@@ -109,8 +113,14 @@ const Index = () => {
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                     {currentUser ? (
                       <>
-                        <AccountSwitcher onClick={handleProfileClick} />
-                        <Button variant="outline" className="w-full" onClick={handleLogout}>
+                        <AccountSwitcher onClick={() => {
+                          handleProfileClick();
+                          setMobileMenuOpen(false);
+                        }} />
+                        <Button variant="outline" className="w-full" onClick={() => {
+                          handleLogout();
+                          setMobileMenuOpen(false);
+                        }}>
                           <LogOut className="mr-2 h-4 w-4" />
                           Log out
                         </Button>
