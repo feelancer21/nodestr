@@ -2,18 +2,21 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star } from 'lucide-react';
+import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, Moon, Sun } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { RelayListManager } from '@/components/RelayListManager';
 import LoginDialog from '@/components/auth/LoginDialog';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
+import { useTheme } from '@/hooks/useTheme';
 import { genUserName } from '@/lib/genUserName';
 
 const navItems = [
@@ -28,6 +31,7 @@ type SectionId = (typeof navItems)[number]['id'];
 
 const Index = () => {
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   useSeoMeta({
     title: 'nodestr — Lightning Operators on Nostr',
@@ -39,6 +43,8 @@ const Index = () => {
   const { currentUser } = useLoggedInAccounts();
   const feed = useClipFeed();
   const feedEvents = feed.data ?? [];
+
+  const isDarkMode = theme === 'dark';
 
   const displayProfile = useMemo(() => {
     if (!currentUser) return null;
@@ -53,7 +59,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-7xl items-stretch gap-6 px-6 py-8">
         <div className="fixed left-4 top-6 z-40 xl:hidden">
           <Sheet>
@@ -61,12 +67,12 @@ const Index = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 rounded-full border-white/10 bg-white/10 text-slate-100 shadow-lg shadow-black/30"
+                className="h-10 w-10 rounded-full border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-slate-100 shadow-lg shadow-black/30"
               >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-52 border-white/10 bg-slate-950 text-slate-100 sm:w-60">
+            <SheetContent side="left" className="w-52 border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 sm:w-60">
               <div className="flex h-full flex-col justify-between">
                 <div className="space-y-8">
                   <div className="space-y-2">
@@ -84,8 +90,8 @@ const Index = () => {
                         className={cn(
                           'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
                           activeSection === id
-                            ? 'bg-white/10 text-white'
-                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                            ? 'bg-slate-100 dark:bg-white/10 text-white'
+                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                         )}
                       >
                         <span className="flex items-center gap-2">
@@ -104,9 +110,9 @@ const Index = () => {
                     {displayProfile ? (
                       <>
                         <div className="space-y-1">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Active profile</p>
                           <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
-                          <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
+                          <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{displayProfile.npub}</p>
                         </div>
                         <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
                       </>
@@ -117,7 +123,7 @@ const Index = () => {
                       </Button>
                     )}
                   </div>
-                  <div className="space-y-2 text-xs text-slate-400">
+                  <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
                     <p className="leading-relaxed">
                       Vibed with{' '}
                       <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
@@ -131,7 +137,7 @@ const Index = () => {
           </Sheet>
         </div>
 
-        <aside className="hidden min-h-[calc(100vh-4rem)] w-72 flex-col justify-between rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur xl:flex">
+        <aside className="hidden min-h-[calc(100vh-4rem)] w-72 flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-6 backdrop-blur xl:flex">
           <div className="space-y-8">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -148,8 +154,8 @@ const Index = () => {
                   className={cn(
                     'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
                     activeSection === id
-                      ? 'bg-white/10 text-white'
-                      : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-slate-100 dark:bg-white/10 text-white'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -168,9 +174,9 @@ const Index = () => {
               {displayProfile ? (
                 <>
                   <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Active profile</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Active profile</p>
                     <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
-                    <p className="text-xs font-mono text-slate-400">{displayProfile.npub}</p>
+                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{displayProfile.npub}</p>
                   </div>
                   <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
                 </>
@@ -181,7 +187,7 @@ const Index = () => {
                 </Button>
               )}
             </div>
-            <div className="space-y-4 text-xs text-slate-400">
+            <div className="space-y-4 text-xs text-slate-500 dark:text-slate-400">
               <p className="leading-relaxed">
                 Vibed with{' '}
                 <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
@@ -193,11 +199,11 @@ const Index = () => {
         </aside>
 
         <main className="flex-1 space-y-8">
-          <header className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/20 via-slate-900/80 to-slate-950 p-8 shadow-2xl">
+          <header className="rounded-3xl border border-slate-200 dark:border-white/10 bg-gradient-to-br from-emerald-100 via-slate-50 to-white dark:from-emerald-500/20 dark:via-slate-900/80 dark:to-slate-950 p-8 shadow-2xl">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div className="space-y-3">
                 <h2 className="text-3xl font-semibold">Work in progress</h2>
-                <p className="text-sm text-slate-300">This area is under construction and will change in later phases.</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">This area is under construction and will change in later phases.</p>
               </div>
             </div>
             <LoginDialog
@@ -214,9 +220,9 @@ const Index = () => {
                <div className="flex items-center justify-between">
                  <div>
                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Feed</p>
-                   <p className="text-sm text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
+                   <p className="text-sm text-slate-600 dark:text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
                  </div>
-                 <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                 <Badge variant="secondary" className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200">
                    {feedEvents?.length ?? 0} events
                  </Badge>
                </div>
@@ -224,7 +230,7 @@ const Index = () => {
               {feed.isLoading && (
                 <div className="grid gap-4">
                   {[0, 1, 2].map((idx) => (
-                    <Card key={idx} className="border-white/10 bg-white/5 text-slate-100">
+                    <Card key={idx} className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                       <CardHeader className="space-y-3">
                         <Skeleton className="h-4 w-32" />
                         <Skeleton className="h-3 w-48" />
@@ -239,19 +245,19 @@ const Index = () => {
               )}
 
               {feed.isError && (
-                <Card className="border-white/10 bg-white/5 text-slate-100">
+                <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                   <CardHeader>
-                    <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Relay Error</CardTitle>
+                    <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Relay Error</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-slate-200">
+                  <CardContent className="text-sm text-slate-700 dark:text-slate-200">
                     We couldn’t load CLIP events from your relays. Try again in a moment.
                   </CardContent>
                 </Card>
               )}
 
               {!feed.isLoading && !feed.isError && feedEvents.length === 0 && (
-                <Card className="border-white/10 bg-white/5 text-slate-100">
-                  <CardContent className="py-12 text-center text-sm text-slate-300">
+                <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
+                  <CardContent className="py-12 text-center text-sm text-slate-600 dark:text-slate-300">
                     No events yet. Check your relays or wait for announcements to appear.
                   </CardContent>
                 </Card>
@@ -287,24 +293,24 @@ const Index = () => {
                             navigate(`/profile/${event.pubkey}`);
                           }
                         }}
-                        className="text-left hover:bg-white/10 transition rounded-xl"
+                        className="text-left hover:bg-slate-100 dark:bg-white/10 transition rounded-xl"
                       >
-                        <Card className="border-white/10 bg-white/5 text-slate-100">
+                        <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                           <CardHeader className="flex flex-col gap-3">
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm font-medium">{alias}</p>
-                                <p className="text-xs text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
                               </div>
                               <span
-                                className="text-xs text-slate-400"
+                                className="text-xs text-slate-500 dark:text-slate-400"
                                 title={createdAt.toLocaleString()}
                               >
                                 {timeLabel}
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-2 text-xs">
-                              <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                              <Badge variant="secondary" className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200">
                                 {isAnnouncement ? 'Announcement' : 'Node Info'}
                               </Badge>
                               {network && (
@@ -317,7 +323,7 @@ const Index = () => {
                                     network === 'testnet4' && 'bg-indigo-500/10 text-indigo-200',
                                     network === 'signet' && 'bg-amber-500/10 text-amber-200',
                                     !['mainnet', 'testnet', 'testnet4', 'signet'].includes(network) &&
-                                      'bg-slate-500/10 text-slate-200'
+                                      'bg-slate-500/10 text-slate-700 dark:text-slate-200'
                                   )}
                                 >
                                   {network}
@@ -325,7 +331,7 @@ const Index = () => {
                               )}
                             </div>
                           </CardHeader>
-                          <CardContent className="text-sm text-slate-300">
+                          <CardContent className="text-sm text-slate-600 dark:text-slate-300">
                             {isAnnouncement
                               ? 'Node Announcement (CLIP k=0). Run by this operator.'
                               : 'Node Info (CLIP k=1). Published by this operator.'}
@@ -341,11 +347,11 @@ const Index = () => {
 
           {activeSection === 'search' && (
             <section className="grid gap-6">
-              <Card className="border-white/10 bg-white/5 text-slate-100">
+              <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                 <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Search</CardTitle>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Search</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-slate-200">
+                <CardContent className="text-sm text-slate-700 dark:text-slate-200">
                   Lightning node discovery and operator resolution land in Phase 4.
                 </CardContent>
               </Card>
@@ -354,11 +360,11 @@ const Index = () => {
 
           {activeSection === 'publish' && (
             <section className="grid gap-6">
-              <Card className="border-white/10 bg-white/5 text-slate-100">
+              <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                 <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Publish</CardTitle>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Publish</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-slate-200">
+                <CardContent className="text-sm text-slate-700 dark:text-slate-200">
                   Node announcement and info publishing arrive in Phase 6.
                 </CardContent>
               </Card>
@@ -367,11 +373,11 @@ const Index = () => {
 
           {activeSection === 'dms' && (
             <section className="grid gap-6">
-              <Card className="border-white/10 bg-white/5 text-slate-100">
+              <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                 <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">DMs</CardTitle>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">DMs</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-slate-200">
+                <CardContent className="text-sm text-slate-700 dark:text-slate-200">
                   Operator-only DMs will activate in Phase 9.
                 </CardContent>
               </Card>
@@ -380,19 +386,38 @@ const Index = () => {
 
           {activeSection === 'settings' && (
             <section className="grid gap-6">
-              <Card className="border-white/10 bg-white/5 text-slate-100">
+              <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
                 <CardHeader>
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-400">Settings</CardTitle>
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Settings</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6 text-sm text-slate-200">
+                <CardContent className="space-y-6 text-sm text-slate-700 dark:text-slate-200">
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
+                    <div className="flex items-center gap-3">
+                      {isDarkMode ? (
+                        <Moon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      ) : (
+                        <Sun className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                      )}
+                      <Label htmlFor="theme-toggle" className="text-sm cursor-pointer text-slate-600 dark:text-slate-300">
+                        Dark Mode
+                      </Label>
+                    </div>
+                    <Switch
+                      id="theme-toggle"
+                      checked={isDarkMode}
+                      onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                      className="data-[state=checked]:bg-emerald-500"
+                    />
+                  </div>
+
                   <div>
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
                       Relays are stored locally in this browser. Changes apply immediately for new connections.
                     </p>
                   </div>
                   <RelayListManager />
-                  <div className="text-xs text-slate-400">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Info:</span>{' '}
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Info:</span>{' '}
                     Relay list is not synced to Nostr in Phase 1.
                   </div>
                 </CardContent>
