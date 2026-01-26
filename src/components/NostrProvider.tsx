@@ -26,38 +26,49 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
     queryClient.invalidateQueries({ queryKey: ['nostr'] });
   }, [config.relayMetadata, queryClient]);
 
-  // Initialize NPool only once
-  if (!pool.current) {
-    pool.current = new NPool({
-      open(url: string) {
-        return new NRelay1(url);
-      },
-      reqRouter(filters: NostrFilter[]) {
-        const routes = new Map<string, NostrFilter[]>();
+   // Initialize NPool only once
+   if (!pool.current) {
+     const readRelays = config.relayMetadata.relays
+       .filter(r => r.read)
+       .map(r => r.url);
+     
+     console.log('[NostrProvider] Initializing NPool with relays:', readRelays);
+     
+     pool.current = new NPool({
+       open(url: string) {
+         console.log('[NostrProvider] Opening relay connection:', url);
+         return new NRelay1(url);
+       },
+       reqRouter(filters: NostrFilter[]) {
+         const routes = new Map<string, NostrFilter[]>();
 
-        // Route to all read relays
-        const readRelays = relayMetadata.current.relays
-          .filter(r => r.read)
-          .map(r => r.url);
+         // Route to all read relays
+         const readRelays = relayMetadata.current.relays
+           .filter(r => r.read)
+           .map(r => r.url);
 
-        for (const url of readRelays) {
-          routes.set(url, filters);
-        }
+         console.log('[NostrProvider] Routing query to relays:', readRelays, 'filters:', filters);
 
-        return routes;
-      },
-      eventRouter(_event: NostrEvent) {
-        // Get write relays from metadata
-        const writeRelays = relayMetadata.current.relays
-          .filter(r => r.write)
-          .map(r => r.url);
+         for (const url of readRelays) {
+           routes.set(url, filters);
+         }
 
-        const allRelays = new Set<string>(writeRelays);
+         return routes;
+       },
+       eventRouter(_event: NostrEvent) {
+         // Get write relays from metadata
+         const writeRelays = relayMetadata.current.relays
+           .filter(r => r.write)
+           .map(r => r.url);
 
-        return [...allRelays];
-      },
-    });
-  }
+         console.log('[NostrProvider] Routing event to relays:', writeRelays);
+
+         const allRelays = new Set<string>(writeRelays);
+
+         return [...allRelays];
+       },
+     });
+   }
 
   return (
     <NostrContext.Provider value={{ nostr: pool.current }}>
