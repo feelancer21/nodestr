@@ -32,10 +32,16 @@ export function RelayListManager() {
     try {
       return new URL(url).toString();
     } catch {
+      // Try with wss:// for remote relays
       try {
         return new URL(`wss://${url}`).toString();
       } catch {
-        return url;
+        // Try with ws:// for local development
+        try {
+          return new URL(`ws://${url}`).toString();
+        } catch {
+          return url;
+        }
       }
     }
   };
@@ -47,7 +53,7 @@ export function RelayListManager() {
     const normalized = normalizeRelayUrl(trimmed);
     try {
       const parsed = new URL(normalized);
-      return parsed.protocol === 'wss:';
+      return parsed.protocol === 'wss:' || parsed.protocol === 'ws:';
     } catch {
       return false;
     }
@@ -57,7 +63,7 @@ export function RelayListManager() {
     if (!isValidRelayUrl(newRelayUrl)) {
       toast({
         title: 'Invalid relay URL',
-        description: 'Please enter a valid relay URL (e.g., wss://relay.example.com)',
+        description: 'Please enter a valid relay URL (e.g., wss://relay.example.com or ws://localhost:7777)',
         variant: 'destructive',
       });
       return;
@@ -207,7 +213,7 @@ export function RelayListManager() {
           </Label>
           <Input
             id="new-relay-url"
-            placeholder="Enter relay URL (e.g., wss://relay.example.com)"
+            placeholder="Enter relay URL (e.g., wss://relay.example.com or ws://localhost:7777)"
             value={newRelayUrl}
             onChange={(e) => setNewRelayUrl(e.target.value)}
             onKeyDown={(e) => {
