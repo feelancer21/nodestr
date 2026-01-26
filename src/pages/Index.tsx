@@ -90,7 +90,7 @@ const Index = () => {
                         className={cn(
                           'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
                           activeSection === id
-                            ? 'bg-slate-100 dark:bg-white/10 text-white'
+                            ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white'
                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                         )}
                       >
@@ -154,7 +154,7 @@ const Index = () => {
                   className={cn(
                     'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
                     activeSection === id
-                      ? 'bg-slate-100 dark:bg-white/10 text-white'
+                      ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white'
                       : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
                   )}
                 >
