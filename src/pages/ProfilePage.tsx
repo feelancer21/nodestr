@@ -1,23 +1,19 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import OperatorProfile from './OperatorProfile';
 import NotFound from './NotFound';
 
-interface ProfilePageParams {
-  nip19Identifier: string;
-}
-
 /**
  * ProfilePage handles NIP-19 routing and delegates to OperatorProfile.
- * 
+ *
  * Canonical route: /profile/:nip19Identifier
  * Where nip19Identifier is: npub1... or nprofile1...
- * 
+ *
  * Also handles legacy /operator/:hex redirects by converting hex to npub.
  */
 export function ProfilePage() {
-  const { nip19Identifier } = useParams<ProfilePageParams>();
+  const { nip19Identifier } = useParams<{ nip19Identifier?: string }>();
   const navigate = useNavigate();
 
   // Decode and validate the NIP-19 identifier

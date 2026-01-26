@@ -64,7 +64,7 @@ export function useOperatorProfile(pubkey: string) {
 
         announcementEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok && result.identifier.kind === CLIP_ANNOUNCEMENT) {
+          if (result.ok && result.identifier && result.identifier.kind === CLIP_ANNOUNCEMENT) {
             store.store({ event, identifier: result.identifier });
           }
         });
@@ -88,7 +88,7 @@ export function useOperatorProfile(pubkey: string) {
 
         infoEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok && result.identifier.kind === CLIP_NODE_INFO) {
+          if (result.ok && result.identifier && result.identifier.kind === CLIP_NODE_INFO) {
             store.store({ event, identifier: result.identifier });
           }
         });

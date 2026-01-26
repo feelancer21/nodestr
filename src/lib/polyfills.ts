@@ -100,7 +100,7 @@ if (!AbortSignal.timeout) {
 
 // Check if crypto.randomUUID is already available
 if (!crypto.randomUUID) {
-  crypto.randomUUID = function(): string {
+  crypto.randomUUID = function(): `${string}-${string}-${string}-${string}-${string}` {
     // RFC 4122 v4 UUID format
     // xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
     // where x is any hex digit and y is one of 8, 9, A, or B
@@ -123,7 +123,7 @@ if (!crypto.randomUUID) {
         result += char;
       }
     }
-    
-    return result;
+
+    return result as `${string}-${string}-${string}-${string}-${string}`;
   };
 }

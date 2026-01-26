@@ -47,7 +47,7 @@ export function useClipFeed() {
         console.log('[useClipFeed] Received announcements:', announcementEvents.length, announcementEvents);
         announcementEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok && result.identifier.kind === CLIP_ANNOUNCEMENT) {
+          if (result.ok && result.identifier && result.identifier.kind === CLIP_ANNOUNCEMENT) {
             store.store({ event, identifier: result.identifier });
           }
         });
@@ -81,7 +81,7 @@ export function useClipFeed() {
         console.log('[useClipFeed] Received node info:', infoEvents.length, infoEvents);
         infoEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
-          if (result.ok && result.identifier.kind === CLIP_NODE_INFO) {
+          if (result.ok && result.identifier && result.identifier.kind === CLIP_NODE_INFO) {
             store.store({ event, identifier: result.identifier });
           }
         });
