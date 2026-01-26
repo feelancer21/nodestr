@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
 import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings } from 'lucide-react';
@@ -26,6 +27,8 @@ const navItems = [
 type SectionId = (typeof navItems)[number]['id'];
 
 const Index = () => {
+  const navigate = useNavigate();
+
   useSeoMeta({
     title: 'nodestr — Lightning Operators on Nostr',
     description: 'nodestr is a browser-only Nostr client for Lightning node operators.',
@@ -200,17 +203,17 @@ const Index = () => {
             />
           </header>
 
-          {activeSection === 'home' && (
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Feed</p>
-                  <p className="text-sm text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
-                </div>
-                <Badge variant="secondary" className="bg-white/10 text-slate-200">
-                  {feedEvents.length} events
-                </Badge>
-              </div>
+           {activeSection === 'home' && (
+             <section className="space-y-6">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Feed</p>
+                   <p className="text-sm text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
+                 </div>
+                 <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                   {feedEvents?.length ?? 0} events
+                 </Badge>
+               </div>
 
               {feed.isLoading && (
                 <div className="grid gap-4">
@@ -267,48 +270,54 @@ const Index = () => {
                     const alias = identifier.pubkey.slice(0, 20);
 
                     return (
-                      <Card key={event.id} className="border-white/10 bg-white/5 text-slate-100">
-                        <CardHeader className="flex flex-col gap-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium">{alias}</p>
-                              <p className="text-xs text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
-                            </div>
-                            <span
-                              className="text-xs text-slate-400"
-                              title={createdAt.toLocaleString()}
-                            >
-                              {timeLabel}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-xs">
-                            <Badge variant="secondary" className="bg-white/10 text-slate-200">
-                              {isAnnouncement ? 'Announcement' : 'Node Info'}
-                            </Badge>
-                            {network && (
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  'text-xs',
-                                  network === 'mainnet' && 'bg-emerald-500/10 text-emerald-200',
-                                  network === 'testnet' && 'bg-blue-500/10 text-blue-200',
-                                  network === 'testnet4' && 'bg-indigo-500/10 text-indigo-200',
-                                  network === 'signet' && 'bg-amber-500/10 text-amber-200',
-                                  !['mainnet', 'testnet', 'testnet4', 'signet'].includes(network) &&
-                                    'bg-slate-500/10 text-slate-200'
-                                )}
+                      <button
+                        key={event.id}
+                        onClick={() => navigate(`/operator/${event.pubkey}`)}
+                        className="text-left hover:bg-white/10 transition rounded-xl"
+                      >
+                        <Card className="border-white/10 bg-white/5 text-slate-100">
+                          <CardHeader className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium">{alias}</p>
+                                <p className="text-xs text-slate-400">{identifier.pubkey.slice(0, 12)}…</p>
+                              </div>
+                              <span
+                                className="text-xs text-slate-400"
+                                title={createdAt.toLocaleString()}
                               >
-                                {network}
+                                {timeLabel}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-2 text-xs">
+                              <Badge variant="secondary" className="bg-white/10 text-slate-200">
+                                {isAnnouncement ? 'Announcement' : 'Node Info'}
                               </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent className="text-sm text-slate-300">
-                          {isAnnouncement
-                            ? 'Node Announcement (CLIP k=0).'
-                            : 'Node Info (CLIP k=1).'}
-                        </CardContent>
-                      </Card>
+                              {network && (
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-xs',
+                                    network === 'mainnet' && 'bg-emerald-500/10 text-emerald-200',
+                                    network === 'testnet' && 'bg-blue-500/10 text-blue-200',
+                                    network === 'testnet4' && 'bg-indigo-500/10 text-indigo-200',
+                                    network === 'signet' && 'bg-amber-500/10 text-amber-200',
+                                    !['mainnet', 'testnet', 'testnet4', 'signet'].includes(network) &&
+                                      'bg-slate-500/10 text-slate-200'
+                                  )}
+                                >
+                                  {network}
+                                </Badge>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="text-sm text-slate-300">
+                            {isAnnouncement
+                              ? 'Node Announcement (CLIP k=0). Run by this operator.'
+                              : 'Node Info (CLIP k=1). Published by this operator.'}
+                          </CardContent>
+                        </Card>
+                      </button>
                     );
                   })}
                 </div>
