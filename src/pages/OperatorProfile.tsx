@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
@@ -12,12 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-interface OperatorProfileParams {
+interface OperatorProfileProps {
   pubkey: string;
 }
 
-export function OperatorProfile() {
-  const { pubkey } = useParams<OperatorProfileParams>();
+export function OperatorProfile({ pubkey }: OperatorProfileProps) {
   const profile = useOperatorProfile(pubkey || '');
   const author = useAuthor(pubkey);
 

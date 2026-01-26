@@ -3,7 +3,8 @@ import { ScrollToTop } from "./components/ScrollToTop";
 
 import Index from "./pages/Index";
 import { NIP19Page } from "./pages/NIP19Page";
-import OperatorProfile from "./pages/OperatorProfile";
+import ProfilePage from "./pages/ProfilePage";
+import LegacyOperatorRedirect from "./pages/LegacyOperatorRedirect";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -12,7 +13,10 @@ export function AppRouter() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/operator/:pubkey" element={<OperatorProfile />} />
+        {/* Canonical profile route: /profile/npub1... or /profile/nprofile1... */}
+        <Route path="/profile/:nip19Identifier" element={<ProfilePage />} />
+        {/* Legacy redirect for /operator/:hex - converts hex to npub and redirects */}
+        <Route path="/operator/:hexPubkey" element={<LegacyOperatorRedirect />} />
         {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
         <Route path="/:nip19" element={<NIP19Page />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

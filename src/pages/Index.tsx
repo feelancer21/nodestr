@@ -272,7 +272,15 @@ const Index = () => {
                     return (
                       <button
                         key={event.id}
-                        onClick={() => navigate(`/operator/${event.pubkey}`)}
+                        onClick={() => {
+                          try {
+                            const npub = nip19.npubEncode(event.pubkey);
+                            navigate(`/profile/${npub}`);
+                          } catch {
+                            // Fallback to hex if encoding fails
+                            navigate(`/profile/${event.pubkey}`);
+                          }
+                        }}
                         className="text-left hover:bg-white/10 transition rounded-xl"
                       >
                         <Card className="border-white/10 bg-white/5 text-slate-100">
