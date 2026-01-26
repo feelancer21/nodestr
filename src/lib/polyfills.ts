@@ -88,3 +88,42 @@ if (!AbortSignal.timeout) {
     return controller.signal;
   };
 }
+
+/**
+ * Polyfill for crypto.randomUUID()
+ * 
+ * crypto.randomUUID() generates a random UUID (v4) string.
+ * This polyfill provides a fallback for browsers that don't support it.
+ * 
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID
+ */
+
+// Check if crypto.randomUUID is already available
+if (!crypto.randomUUID) {
+  crypto.randomUUID = function(): string {
+    // RFC 4122 v4 UUID format
+    // xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+    // where x is any hex digit and y is one of 8, 9, A, or B
+    
+    const template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+    let result = '';
+    
+    for (let i = 0; i < template.length; i++) {
+      const char = template[i];
+      
+      if (char === 'x') {
+        // Generate random hex digit (0-f)
+        result += Math.floor(Math.random() * 16).toString(16);
+      } else if (char === 'y') {
+        // Generate random hex digit with bits 6 and 7 set to 10
+        const randomByte = Math.floor(Math.random() * 256);
+        const byte = (randomByte & 0x3f) | 0x80; // Ensure bits 6-7 are 10xxxxxx
+        result += byte.toString(16).padStart(2, '0').slice(-1);
+      } else if (char === '-' || char === '4') {
+        result += char;
+      }
+    }
+    
+    return result;
+  };
+}
