@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, Moon, Sun } from 'lucide-react';
+import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, Moon, Sun, LogOut } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
@@ -17,7 +17,6 @@ import LoginDialog from '@/components/auth/LoginDialog';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { useTheme } from '@/hooks/useTheme';
-import { genUserName } from '@/lib/genUserName';
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home },
@@ -40,22 +39,26 @@ const Index = () => {
 
   const [loginOpen, setLoginOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>('home');
-  const { currentUser } = useLoggedInAccounts();
+  const { currentUser, removeLogin } = useLoggedInAccounts();
   const feed = useClipFeed();
   const feedEvents = feed.data ?? [];
 
   const isDarkMode = theme === 'dark';
 
-  const displayProfile = useMemo(() => {
-    if (!currentUser) return null;
-    const name = currentUser.metadata.name ?? genUserName(currentUser.pubkey);
-    const npub = nip19.npubEncode(currentUser.pubkey);
-    const shortNpub = `${npub.slice(0, 12)}…${npub.slice(-6)}`;
-    return { name, npub: shortNpub };
-  }, [currentUser]);
-
   const handleLogin = async () => {
     setLoginOpen(true);
+  };
+
+  const handleProfileClick = () => {
+    if (currentUser) {
+      navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`);
+    }
+  };
+
+  const handleLogout = () => {
+    if (currentUser) {
+      removeLogin(currentUser.id);
+    }
   };
 
   return (
@@ -107,14 +110,13 @@ const Index = () => {
                 </div>
                 <div className="space-y-6">
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                    {displayProfile ? (
+                    {currentUser ? (
                       <>
-                        <div className="space-y-1">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Active profile</p>
-                          <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
-                          <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{displayProfile.npub}</p>
-                        </div>
-                        <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
+                        <AccountSwitcher onClick={handleProfileClick} />
+                        <Button variant="outline" className="w-full" onClick={handleLogout}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Log out
+                        </Button>
                       </>
                     ) : (
                       <Button className="w-full justify-start" onClick={handleLogin}>
@@ -171,14 +173,13 @@ const Index = () => {
           </div>
           <div className="space-y-6">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-              {displayProfile ? (
+              {currentUser ? (
                 <>
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Active profile</p>
-                    <p className="text-sm font-medium text-slate-100">{displayProfile.name}</p>
-                    <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{displayProfile.npub}</p>
-                  </div>
-                  <AccountSwitcher onAddAccountClick={() => setLoginOpen(true)} />
+                  <AccountSwitcher onClick={handleProfileClick} />
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
                 </>
               ) : (
                 <Button className="w-full justify-start" onClick={handleLogin}>
