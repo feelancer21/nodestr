@@ -2,10 +2,32 @@
 
 If the app loads but doesn't fetch information from relays, follow these steps:
 
+## 0. Quick Test (NEW)
+
+**First, test relays directly:**
+1. Go to: `http://192.168.2.161:5173/debug/relays`
+2. Click **"Test Relays"** button
+3. Wait for results (should show within 5 seconds per relay)
+4. Check:
+   - ✅ Each relay shows "✅ Connected" or "❌ Connection timeout"
+   - ✅ Event counts for working relays
+   - ✅ Response times
+
+**If all relays show "Connection timeout":**
+- Relays are not responding
+- Try different relay URLs in Settings
+- Check firewall/network connectivity
+
+**If at least one relay shows "✅ Connected":**
+- Relay connectivity is working
+- The issue might be with how the app queries for CLIP events
+- Check browser console logs (see Step 1 below)
+
 ## 1. Check Browser Console
 
 Open DevTools (F12) and check the Console tab for messages starting with:
 - `[NostrProvider]` - Relay initialization
+- `[RelayTest]` - Relay test messages
 - `[useClipFeed]` - Feed fetch attempts
 
 Expected logs:
@@ -13,9 +35,8 @@ Expected logs:
 [NostrProvider] Initializing NPool with relays: ['wss://relay.damus.io', 'wss://nos.lol']
 [NostrProvider] Opening relay connection: wss://relay.damus.io
 [NostrProvider] Opening relay connection: wss://nos.lol
-[useClipFeed] Starting feed fetch: { announcementsSince: ..., feedSince: ..., now: ... }
-[useClipFeed] Fetching announcements...
-[useClipFeed] Received announcements: X
+[RelayTest] Testing relay: wss://relay.damus.io
+[RelayTest] Relay OK: wss://relay.damus.io Got X events
 ```
 
 ## 2. Common Issues & Solutions
