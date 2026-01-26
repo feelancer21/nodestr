@@ -146,22 +146,22 @@ export function RelayTest() {
                 <p className="text-sm text-slate-300">{results.message}</p>
               </div>
 
-              {results.relayResults && results.relayResults.length > 0 && (
-                <div>
-                  <p className="text-sm font-semibold mb-2">Per-Relay Results:</p>
-                  <div className="space-y-2">
-                    {results.relayResults.map((result) => (
-                      <div key={result.relay} className="bg-slate-900 rounded p-3 border border-white/10">
-                        <p className="text-xs font-mono text-slate-300 mb-1">{result.relay}</p>
-                        <p className="text-sm text-slate-100">{result.message}</p>
-                        {result.duration !== undefined && (
-                          <p className="text-xs text-slate-300 mt-1">{result.duration}ms</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+               {results.relayResults && results.relayResults.length > 0 && (
+                 <div>
+                   <p className="text-sm font-semibold mb-2">Per-Relay Results:</p>
+                   <div className="space-y-2">
+                     {results.relayResults.map((result) => (
+                       <div key={result.relay} className="bg-slate-800 rounded p-3 border border-white/10">
+                         <p className="text-xs font-mono text-slate-200 mb-1">{result.relay}</p>
+                         <p className="text-sm text-slate-50 font-medium">{result.message}</p>
+                         {result.duration !== undefined && (
+                           <p className="text-xs text-slate-200 mt-1">{result.duration}ms</p>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               )}
 
               {results.eventCount !== undefined && (
                 <div>
