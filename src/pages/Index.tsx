@@ -78,7 +78,7 @@ const Index = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
-                      <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                      <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">nodestr</p>
                     </div>
                     <h1 className="text-base font-semibold">Lightning Node Identity</h1>
                   </div>
@@ -99,7 +99,7 @@ const Index = () => {
                           {label}
                         </span>
                         {activeSection === id && (
-                          <span className="text-[10px] uppercase text-emerald-300">Now</span>
+                          <span className="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Now</span>
                         )}
                       </button>
                     ))}
@@ -126,7 +126,7 @@ const Index = () => {
                   <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
                     <p className="leading-relaxed">
                       Vibed with{' '}
-                      <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
+                      <a href="https://shakespeare.diy" className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">
                         Shakespeare
                       </a>
                     </p>
@@ -142,7 +142,7 @@ const Index = () => {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
-                <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">nodestr</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">nodestr</p>
               </div>
               <h1 className="text-base font-semibold">Lightning Node Identity</h1>
             </div>
@@ -163,7 +163,7 @@ const Index = () => {
                     {label}
                   </span>
                   {activeSection === id && (
-                    <span className="text-[10px] uppercase text-emerald-300">Now</span>
+                    <span className="text-[10px] uppercase text-emerald-700 dark:text-emerald-300">Now</span>
                   )}
                 </button>
               ))}
@@ -190,7 +190,7 @@ const Index = () => {
             <div className="space-y-4 text-xs text-slate-500 dark:text-slate-400">
               <p className="leading-relaxed">
                 Vibed with{' '}
-                <a href="https://shakespeare.diy" className="text-emerald-300 hover:text-emerald-200">
+                <a href="https://shakespeare.diy" className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">
                   Shakespeare
                 </a>
               </p>
@@ -219,7 +219,7 @@ const Index = () => {
              <section className="space-y-6">
                <div className="flex items-center justify-between">
                  <div>
-                   <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/80">Feed</p>
+                   <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">Feed</p>
                    <p className="text-sm text-slate-600 dark:text-slate-300">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
                  </div>
                  <Badge variant="secondary" className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-200">
@@ -318,7 +318,7 @@ const Index = () => {
                                   variant="secondary"
                                   className={cn(
                                     'text-xs',
-                                    network === 'mainnet' && 'bg-emerald-500/10 text-emerald-200',
+                                    network === 'mainnet' && 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200',
                                     network === 'testnet' && 'bg-blue-500/10 text-blue-200',
                                     network === 'testnet4' && 'bg-indigo-500/10 text-indigo-200',
                                     network === 'signet' && 'bg-amber-500/10 text-amber-200',
