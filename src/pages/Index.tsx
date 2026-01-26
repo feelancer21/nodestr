@@ -83,7 +83,7 @@ const Index = () => {
                       <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
                       <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">nodestr</p>
                     </div>
-                    <h1 className="text-base font-semibold">Lightning Node Identity</h1>
+                    <h1 className="text-base font-semibold">Lightning Nodes on Nostr</h1>
                   </div>
                   <nav className="space-y-2 text-sm">
                     {navItems.map(({ id, label, icon: Icon }) => (
@@ -146,7 +146,7 @@ const Index = () => {
                 <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
                 <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">nodestr</p>
               </div>
-              <h1 className="text-base font-semibold">Lightning Node Identity</h1>
+              <h1 className="text-base font-semibold">Lightning Nodes on Nostr</h1>
             </div>
             <nav className="space-y-2 text-sm">
               {navItems.map(({ id, label, icon: Icon }) => (
