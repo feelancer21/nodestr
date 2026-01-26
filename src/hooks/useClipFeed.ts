@@ -23,19 +23,28 @@ export function useClipFeed() {
       const errors: unknown[] = [];
 
       try {
-        console.log('[useClipFeed] Fetching announcements...');
-        const announcementEvents = await nostr.query(
-          [
-            {
-              kinds: [CLIP_KIND],
-              since: announcementsSince,
-              limit: 500,
-            },
-          ],
-          { signal }
+        console.log('[useClipFeed] Fetching announcements with 10 second timeout...');
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Query timeout - relays not responding')), 10000)
         );
 
-        console.log('[useClipFeed] Received announcements:', announcementEvents.length);
+        const announcementEvents = await Promise.race([
+          nostr.query(
+            [
+              {
+                kinds: [CLIP_KIND],
+                since: announcementsSince,
+                limit: 500,
+              },
+            ],
+            { signal }
+          ),
+          timeoutPromise,
+        ]) as NostrEvent[];
+
+        console.log('[useClipFeed] Received announcements:', announcementEvents.length, announcementEvents);
         announcementEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
           if (result.ok && result.identifier.kind === CLIP_ANNOUNCEMENT) {
@@ -48,19 +57,28 @@ export function useClipFeed() {
       }
 
       try {
-        console.log('[useClipFeed] Fetching node info...');
-        const infoEvents = await nostr.query(
-          [
-            {
-              kinds: [CLIP_KIND],
-              since: feedSince,
-              limit: 500,
-            },
-          ],
-          { signal }
+        console.log('[useClipFeed] Fetching node info with 10 second timeout...');
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Query timeout - relays not responding')), 10000)
         );
 
-        console.log('[useClipFeed] Received node info:', infoEvents.length);
+        const infoEvents = await Promise.race([
+          nostr.query(
+            [
+              {
+                kinds: [CLIP_KIND],
+                since: feedSince,
+                limit: 500,
+              },
+            ],
+            { signal }
+          ),
+          timeoutPromise,
+        ]) as NostrEvent[];
+
+        console.log('[useClipFeed] Received node info:', infoEvents.length, infoEvents);
         infoEvents.forEach((event: NostrEvent) => {
           const result = verifyClipEvent(event, now);
           if (result.ok && result.identifier.kind === CLIP_NODE_INFO) {

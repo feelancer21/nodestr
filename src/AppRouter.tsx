@@ -4,6 +4,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import Index from "./pages/Index";
 import { NIP19Page } from "./pages/NIP19Page";
 import ProfilePage from "./pages/ProfilePage";
+import RelayTest from "./pages/RelayTest";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -12,6 +13,8 @@ export function AppRouter() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Index />} />
+        {/* Diagnostic routes */}
+        <Route path="/debug/relays" element={<RelayTest />} />
         {/* Profile routes: /profile/:nip19 or /p/:nip19 (both canonical) */}
         <Route path="/profile/:nip19Identifier" element={<ProfilePage />} />
         <Route path="/p/:nip19Identifier" element={<ProfilePage />} />

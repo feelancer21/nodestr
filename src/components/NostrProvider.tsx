@@ -70,6 +70,22 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
      });
    }
 
+  // Log the current relay configuration
+  useEffect(() => {
+    const readRelays = config.relayMetadata.relays
+      .filter(r => r.read)
+      .map(r => r.url);
+    const writeRelays = config.relayMetadata.relays
+      .filter(r => r.write)
+      .map(r => r.url);
+    
+    console.log('[NostrProvider] Relay configuration updated:', {
+      readRelays,
+      writeRelays,
+      totalRelays: config.relayMetadata.relays.length,
+    });
+  }, [config.relayMetadata]);
+
   return (
     <NostrContext.Provider value={{ nostr: pool.current }}>
       {children}
