@@ -108,9 +108,9 @@ export function RelayTest() {
           </p>
         </div>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-white/10 bg-white/5 text-slate-100">
           <CardHeader>
-            <CardTitle className="text-lg">Connection Test</CardTitle>
+            <CardTitle className="text-lg text-slate-50">Connection Test</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button onClick={testRelays} disabled={results.status === 'testing'} className="w-full">
@@ -118,8 +118,8 @@ export function RelayTest() {
             </Button>
 
             <div className="space-y-4">
-              <div>
-                <p className="text-sm font-semibold mb-2">Status:</p>
+               <div>
+                 <p className="text-sm font-semibold mb-2 text-slate-100">Status:</p>
                 <Badge
                   className={
                     results.status === 'idle'
@@ -141,14 +141,14 @@ export function RelayTest() {
                 </Badge>
               </div>
 
-              <div>
-                <p className="text-sm font-semibold mb-1">Message:</p>
-                <p className="text-sm text-slate-300">{results.message}</p>
-              </div>
+               <div>
+                 <p className="text-sm font-semibold mb-1 text-slate-100">Message:</p>
+                 <p className="text-sm text-slate-200">{results.message}</p>
+               </div>
 
                {results.relayResults && results.relayResults.length > 0 && (
                  <div>
-                   <p className="text-sm font-semibold mb-2">Per-Relay Results:</p>
+                   <p className="text-sm font-semibold mb-2 text-slate-100">Per-Relay Results:</p>
                    <div className="space-y-2">
                      {results.relayResults.map((result) => (
                        <div key={result.relay} className="bg-slate-800 rounded p-3 border border-white/10">
@@ -163,28 +163,28 @@ export function RelayTest() {
                  </div>
                )}
 
-              {results.eventCount !== undefined && (
-                <div>
-                  <p className="text-sm font-semibold mb-1">Total Events Retrieved:</p>
-                  <p className="text-sm text-slate-300">{results.eventCount} events</p>
-                </div>
-              )}
+               {results.eventCount !== undefined && (
+                 <div>
+                   <p className="text-sm font-semibold mb-1 text-slate-100">Total Events Retrieved:</p>
+                   <p className="text-sm text-slate-200">{results.eventCount} events</p>
+                 </div>
+               )}
 
-              {results.duration !== undefined && (
-                <div>
-                  <p className="text-sm font-semibold mb-1">Total Response Time:</p>
-                  <p className="text-sm text-slate-300">{results.duration}ms</p>
-                </div>
-              )}
+               {results.duration !== undefined && (
+                 <div>
+                   <p className="text-sm font-semibold mb-1 text-slate-100">Total Response Time:</p>
+                   <p className="text-sm text-slate-200">{results.duration}ms</p>
+                 </div>
+               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-white/10 bg-white/5 text-slate-100">
           <CardHeader>
-            <CardTitle className="text-sm">What This Tests</CardTitle>
+            <CardTitle className="text-sm text-slate-50">What This Tests</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-2 text-slate-300">
+          <CardContent className="text-sm space-y-2 text-slate-200">
             <p>✓ Relay connectivity</p>
             <p>✓ WebSocket communication</p>
             <p>✓ Query response times</p>
@@ -192,11 +192,11 @@ export function RelayTest() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-white/5">
+        <Card className="border-white/10 bg-white/5 text-slate-100">
           <CardHeader>
-            <CardTitle className="text-sm">If Test Fails</CardTitle>
+            <CardTitle className="text-sm text-slate-50">If Test Fails</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-2 text-slate-300">
+          <CardContent className="text-sm space-y-2 text-slate-200">
             <p>1. Check browser console for detailed error messages</p>
             <p>2. Go to Settings and verify relay URLs are correct</p>
             <p>3. Try adding different relays</p>
