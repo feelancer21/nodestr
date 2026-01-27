@@ -103,16 +103,16 @@ export function RelayTest() {
   return (
     <>
       <div>
-        <h1 className="text-3xl font-bold">Relay Diagnostic Tool</h1>
-        <p className="text-slate-600 dark:text-slate-400 mt-2">
+        <h1 className="text-3xl font-bold text-foreground">Relay Diagnostic Tool</h1>
+        <p className="text-muted-foreground mt-2">
           Test if relays are properly connected and responding
         </p>
       </div>
 
-          <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+          <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-lg">Connection Test</CardTitle>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">Testing {config.relayMetadata.relays.length} relay{config.relayMetadata.relays.length !== 1 ? 's' : ''}</p>
+              <CardTitle className="text-lg font-semibold text-foreground">Connection Test</CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">Testing {config.relayMetadata.relays.length} relay{config.relayMetadata.relays.length !== 1 ? 's' : ''}</p>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button onClick={testRelays} disabled={results.status === 'testing'} className="w-full">
@@ -121,11 +121,11 @@ export function RelayTest() {
 
               <div className="space-y-4">
                  <div>
-                   <p className="text-sm font-semibold mb-2">Status:</p>
+                   <p className="text-sm text-label font-semibold mb-2">Status:</p>
                   <Badge
                     className={
                       results.status === 'idle'
-                        ? 'bg-slate-600'
+                        ? 'bg-muted text-muted-foreground'
                         : results.status === 'testing'
                           ? 'bg-blue-600'
                           : results.status === 'success'
@@ -144,20 +144,20 @@ export function RelayTest() {
                 </div>
 
                  <div>
-                   <p className="text-sm font-semibold mb-1">Message:</p>
-                   <p className="text-sm text-slate-600 dark:text-slate-300">{results.message}</p>
+                   <p className="text-sm text-label font-semibold mb-1">Message:</p>
+                   <p className="text-sm text-muted-foreground">{results.message}</p>
                  </div>
 
                  {results.relayResults && results.relayResults.length > 0 && (
                    <div>
-                     <p className="text-sm font-semibold mb-2">Per-Relay Results:</p>
+                     <p className="text-sm text-label font-semibold mb-2">Per-Relay Results:</p>
                      <div className="space-y-2">
                        {results.relayResults.map((result) => (
-                         <div key={result.relay} className="bg-slate-100 dark:bg-slate-800 rounded p-3 border border-slate-200 dark:border-white/10">
-                           <p className="text-xs font-mono text-slate-700 dark:text-slate-200 mb-1">{result.relay}</p>
-                           <p className="text-sm font-medium text-slate-900 dark:text-slate-50">{result.message}</p>
+                         <div key={result.relay} className="bg-muted rounded p-3 border border-border">
+                           <p className="text-xs font-mono text-foreground mb-1">{result.relay}</p>
+                           <p className="text-sm font-medium text-foreground">{result.message}</p>
                            {result.duration !== undefined && (
-                             <p className="text-xs text-slate-600 dark:text-slate-200 mt-1">{result.duration}ms</p>
+                             <p className="text-xs text-muted-foreground mt-1">{result.duration}ms</p>
                            )}
                          </div>
                        ))}
@@ -167,38 +167,38 @@ export function RelayTest() {
 
                  {results.eventCount !== undefined && (
                    <div>
-                     <p className="text-sm font-semibold mb-1">Total Events Retrieved:</p>
-                     <p className="text-sm text-slate-600 dark:text-slate-300">{results.eventCount} events</p>
+                     <p className="text-sm text-label font-semibold mb-1">Total Events Retrieved:</p>
+                     <p className="text-sm text-muted-foreground">{results.eventCount} events</p>
                    </div>
                  )}
 
                  {results.duration !== undefined && (
                    <div>
-                     <p className="text-sm font-semibold mb-1">Total Response Time:</p>
-                     <p className="text-sm text-slate-600 dark:text-slate-300">{results.duration}ms</p>
+                     <p className="text-sm text-label font-semibold mb-1">Total Response Time:</p>
+                     <p className="text-sm text-muted-foreground">{results.duration}ms</p>
                    </div>
                  )}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+          <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-sm">What This Tests</CardTitle>
+              <CardTitle className="text-base font-semibold text-foreground">What This Tests</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm space-y-2 text-slate-600 dark:text-slate-300">
-              <p>✓ Relay connectivity</p>
-              <p>✓ WebSocket communication</p>
-              <p>✓ Query response times</p>
-              <p>✓ Event retrieval</p>
+            <CardContent className="text-sm space-y-2 text-muted-foreground">
+              <p>Relay connectivity</p>
+              <p>WebSocket communication</p>
+              <p>Query response times</p>
+              <p>Event retrieval</p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+          <Card className="border-border bg-card">
             <CardHeader>
-              <CardTitle className="text-sm">If Test Fails</CardTitle>
+              <CardTitle className="text-base font-semibold text-foreground">If Test Fails</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm space-y-2 text-slate-600 dark:text-slate-300">
+            <CardContent className="text-sm space-y-2 text-muted-foreground">
               <p>1. Check browser console for detailed error messages</p>
               <p>2. Go to Settings and verify relay URLs are correct</p>
               <p>3. Try adding different relays</p>

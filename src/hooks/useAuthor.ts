@@ -18,7 +18,8 @@ export function useAuthor(pubkey: string | undefined) {
       );
 
       if (!event) {
-        throw new Error('No event found');
+        // Return empty object instead of throwing - user simply has no profile
+        return {};
       }
 
       try {
@@ -29,6 +30,6 @@ export function useAuthor(pubkey: string | undefined) {
       }
     },
     staleTime: 5 * 60 * 1000, // Keep cached data fresh for 5 minutes
-    retry: 3,
+    retry: false, // Don't retry - if no profile found, it's likely the user doesn't have one
   });
 }

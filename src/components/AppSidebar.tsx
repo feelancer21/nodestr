@@ -65,9 +65,10 @@ export function AppSidebar() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-52 border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 sm:w-60">
-            <div className="flex h-full flex-col justify-between">
-              <div className="space-y-8">
+          <SheetContent side="left" className="w-52 border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 sm:w-60 flex flex-col">
+            <div className="flex flex-col h-full min-h-0">
+              {/* Scrollable content area */}
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-8">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
@@ -95,7 +96,9 @@ export function AppSidebar() {
                   ))}
                 </nav>
               </div>
-              <div className="space-y-6">
+
+              {/* Fixed bottom section - always visible */}
+              <div className="shrink-0 pt-6 space-y-6 border-t border-slate-200 dark:border-white/10 mt-auto">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   {currentUser ? (
                     <>

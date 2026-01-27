@@ -221,7 +221,6 @@ export function RelayListManager() {
                 handleAddRelay();
               }
             }}
-            className="text-slate-900"
           />
         </div>
         <Button

@@ -462,7 +462,68 @@ From Go reference (`CombinedSigner`):
 
 See `RELAY_DEBUG.md` for comprehensive debugging guide.
 
-## Design & Styling
+## Design System
+
+### Core Principles
+1. Use CSS custom properties (variables) instead of direct Tailwind colors
+2. Never use direct slate colors (`text-slate-*`, `bg-slate-*`) - use semantic tokens
+3. Maintain consistent typography hierarchy across all components
+4. Accent colors add subtle visual interest without overwhelming
+
+### CSS Custom Properties
+
+**Text Colors:**
+- `text-foreground` - Primary text (headings, body)
+- `text-muted-foreground` - Secondary/meta text
+- `text-label` - Accent color for labels and small metadata (emerald tone)
+- `text-link` - Hyperlinks (orange tone)
+
+**Background Colors:**
+- `bg-background` - Page background
+- `bg-card` - Card backgrounds
+- `bg-muted` - Subtle emphasis areas
+
+**Border Colors:**
+- `border-border` - Standard borders
+
+### Typography Hierarchy
+
+| Element | Classes | Usage |
+|---------|---------|-------|
+| Page title | `text-2xl sm:text-3xl font-semibold text-foreground` | Main page headings |
+| Section header | `text-lg font-semibold text-foreground` | Card titles, section headings |
+| Card title | `text-base font-semibold text-foreground` | Secondary card headings |
+| Body text | `text-sm text-foreground` | Main content, descriptions |
+| Labels/Meta | `text-xs text-label` | Field labels, metadata, timestamps |
+| Muted text | `text-xs text-muted-foreground` | Hints, secondary info |
+
+### Link Styling
+All clickable links must use:
+```tsx
+className="text-link hover:underline"
+```
+
+### Component Patterns
+
+**Cards:**
+```tsx
+<Card className="border-border bg-card">
+```
+
+**Section Separation in Cards:**
+Use `border-t border-border pt-4` between sections.
+
+**Labels with Accent:**
+```tsx
+<span className="text-xs text-label">Label Text</span>
+```
+
+### Anti-Patterns (Do NOT Use)
+- `text-slate-500`, `text-slate-600`, etc.
+- `bg-slate-50`, `bg-slate-100`, etc.
+- `dark:text-slate-*` variants
+- `text-sm uppercase tracking-[0.2em]` for headers
+- Direct color values that bypass CSS variables
 
 ### Theme System
 

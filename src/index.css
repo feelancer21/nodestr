@@ -24,7 +24,7 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 215.4 25% 35%;
 
     --accent: 210 40% 96.1%;
     --accent-foreground: 222.2 47.4% 11.2%;
@@ -53,6 +53,9 @@
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --label: 152 60% 35%;  /* Emerald tone for labels - visible but not overpowering */
+    --link: 24 95% 50%;    /* Orange for hyperlinks - existing orange formalized */
   }
 
   .dark {
@@ -91,6 +94,9 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --label: 152 60% 55%;  /* Lighter emerald for dark mode */
+    --link: 24 90% 55%;    /* Lighter orange for dark mode */
   }
 }
 

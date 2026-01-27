@@ -11,19 +11,19 @@ export function SettingsPage() {
 
   return (
     <section className="grid gap-6">
-      <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Settings</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6 text-sm text-slate-700 dark:text-slate-200">
-          <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
+        <CardContent className="space-y-6 text-sm text-foreground">
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted">
             <div className="flex items-center gap-3">
               {isDarkMode ? (
-                <Moon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <Moon className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <Sun className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <Sun className="h-4 w-4 text-muted-foreground" />
               )}
-              <Label htmlFor="theme-toggle" className="text-sm cursor-pointer text-slate-600 dark:text-slate-300">
+              <Label htmlFor="theme-toggle" className="text-sm cursor-pointer text-foreground">
                 Dark Mode
               </Label>
             </div>
@@ -36,13 +36,13 @@ export function SettingsPage() {
           </div>
 
           <div>
-            <p className="text-sm text-slate-600 dark:text-slate-300">
+            <p className="text-sm text-muted-foreground">
               Relays are stored locally in this browser. Changes apply immediately for new connections.
             </p>
           </div>
           <RelayListManager />
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Info:</span>{' '}
+          <div className="text-xs text-muted-foreground">
+            <span className="text-xs text-label">Info:</span>{' '}
             Relay list is not synced to Nostr in Phase 1.
           </div>
         </CardContent>
