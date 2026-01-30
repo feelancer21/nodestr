@@ -3,7 +3,7 @@ import { nip19 } from 'nostr-tools';
 import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { FormattedText } from '@/components/clip/FormattedText';
-import { truncateMiddle } from '@/lib/utils';
+import { truncateEnd, truncateMiddle } from '@/lib/utils';
 import { useAuthor } from '@/hooks/useAuthor';
 
 function getContactLink(type: string, value: string): { href: string; external: boolean } | null {
@@ -131,8 +131,9 @@ function NostrContactDisplay({ value, link }: NostrContactDisplayProps) {
   const copyValue = getNostrCopyValue(value);
 
   // Determine display text: username if available, otherwise truncated value
-  const displayText = author.data?.metadata?.name || truncateMiddle(value, 24);
-  const isUsername = !!author.data?.metadata?.name;
+  const rawName = author.data?.metadata?.name;
+  const displayText = rawName ? truncateEnd(rawName, 24) : truncateMiddle(value, 24);
+  const isUsername = !!rawName;
 
   const content = link ? (
     <Link

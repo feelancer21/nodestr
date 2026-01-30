@@ -6,6 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Truncate a string at the end with ellipsis
+ */
+export function truncateEnd(str: string, maxLength: number): string {
+  if (str.length <= maxLength) return str;
+  return `${str.slice(0, maxLength - 1)}…`;
+}
+
+/**
  * Truncate a string in the middle with ellipsis
  */
 export function truncateMiddle(str: string, maxLength: number): string {
