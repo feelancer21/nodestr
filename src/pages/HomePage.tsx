@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
+import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
@@ -13,21 +14,12 @@ export function HomePage() {
   const feedEvents = feed.data ?? [];
 
   useSeoMeta({
-    title: 'nodestr — Lightning Operators on Nostr',
+    title: 'nodestr — Lightning Nodes on Nostr',
     description: 'nodestr is a browser-only Nostr client for Lightning node operators.',
   });
 
   return (
     <>
-      <header className="rounded-3xl border border-border bg-gradient-to-br from-emerald-100 via-slate-50 to-white dark:from-emerald-500/20 dark:via-slate-900/80 dark:to-slate-950 p-8 shadow-2xl">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-3">
-            <h1 className="text-2xl font-semibold text-foreground">Work in progress</h1>
-            <p className="text-sm text-muted-foreground">This area is under construction and will change in later phases.</p>
-          </div>
-        </div>
-      </header>
-
       <section className="space-y-6">
         <div>
           <div className="flex items-center gap-2">
@@ -36,7 +28,10 @@ export function HomePage() {
               {feedEvents?.length ?? 0} events
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">Events are filtered locally; Lightning signature crypto checks are not enabled yet.</p>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+            <span>Events are filtered locally; Lightning signature crypto checks are not enabled yet.</span>
+          </p>
         </div>
 
         {feed.isLoading && (

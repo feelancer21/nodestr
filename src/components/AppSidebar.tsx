@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
+import { Home, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
@@ -21,7 +20,6 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, removeLogin } = useLoggedInAccounts();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -48,98 +46,12 @@ export function AppSidebar() {
 
   const handleNavClick = (path: string) => {
     navigate(path);
-    setMobileMenuOpen(false);
   };
 
   return (
     <>
-      {/* Mobile Menu Trigger */}
-      <div className="fixed left-4 top-6 z-40 xl:hidden">
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10 rounded-full border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-slate-100 shadow-lg shadow-black/30"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-52 border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 sm:w-60 flex flex-col">
-            <div className="flex flex-col h-full min-h-0">
-              {/* Scrollable content area */}
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-8">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
-                    <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300/80">nodestr</p>
-                  </div>
-                  <h1 className="text-base font-semibold">Lightning Nodes on Nostr</h1>
-                </div>
-                <nav className="space-y-2 text-sm">
-                  {navItems.map(({ path, label, icon: Icon }) => (
-                    <button
-                      key={path}
-                      onClick={() => handleNavClick(path)}
-                      className={cn(
-                        'flex w-full items-center justify-between rounded-xl px-4 py-2 text-left transition',
-                        isActive(path)
-                          ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white'
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4" />
-                        {label}
-                      </span>
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              {/* Fixed bottom section - always visible */}
-              <div className="shrink-0 pt-6 space-y-6 border-t border-slate-200 dark:border-white/10 mt-auto">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                  {currentUser ? (
-                    <>
-                      <AccountSwitcher onClick={() => {
-                        handleProfileClick();
-                        setMobileMenuOpen(false);
-                      }} />
-                      <Button variant="outline" className="w-full" onClick={() => {
-                        handleLogout();
-                        setMobileMenuOpen(false);
-                      }}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log out
-                      </Button>
-                    </>
-                  ) : (
-                    <Button className="w-full justify-start" onClick={() => {
-                      setLoginOpen(true);
-                      setMobileMenuOpen(false);
-                    }}>
-                      <PlugZap className="mr-2 h-4 w-4" />
-                      Log in
-                    </Button>
-                  )}
-                </div>
-                <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400">
-                  <p className="leading-relaxed">
-                    Vibed with{' '}
-                    <a href="https://shakespeare.diy" className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">
-                      Shakespeare
-                    </a>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
       {/* Desktop Sidebar */}
-      <aside className="hidden sticky top-8 h-[calc(100vh-4rem)] w-72 flex-shrink-0 flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-6 backdrop-blur xl:flex self-start overflow-y-auto">
+      <aside className="hidden sticky top-8 h-[calc(100vh-4rem)] w-64 flex-shrink-0 flex-col justify-between rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-6 backdrop-blur xl:flex self-start overflow-y-auto">
         <div className="space-y-8">
           <div className="space-y-2">
             <div className="flex items-center gap-2">

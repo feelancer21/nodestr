@@ -84,7 +84,7 @@ export function CardHeader({ pubkey, createdAt, onClick }: CardHeaderProps) {
         <div className="flex items-center justify-between gap-2">
           <button
             onClick={onClick}
-            className="font-semibold text-base text-foreground hover:text-primary transition truncate max-w-[200px] sm:max-w-[250px] md:max-w-[300px]"
+            className="font-semibold text-base text-foreground hover:text-primary transition truncate min-w-0"
           >
             {displayName}
           </button>

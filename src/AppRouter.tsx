@@ -9,6 +9,7 @@ import DMsPage from "./pages/DMsPage";
 import SettingsPage from "./pages/SettingsPage";
 import { NIP19Page } from "./pages/NIP19Page";
 import ProfilePage from "./pages/ProfilePage";
+import LnPubPage from "./pages/LnPubPage";
 import RelayTest from "./pages/RelayTest";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,8 @@ export function AppRouter() {
           {/* Profile routes: /profile/:nip19 or /p/:nip19 (both canonical) */}
           <Route path="/profile/:nip19Identifier" element={<ProfilePage />} />
           <Route path="/p/:nip19Identifier" element={<ProfilePage />} />
+          {/* Lightning pubkey lookup - redirects to operator profile */}
+          <Route path="/lnpub/:lightningPubkey" element={<LnPubPage />} />
           {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
           <Route path="/:nip19" element={<NIP19Page />} />
         </Route>

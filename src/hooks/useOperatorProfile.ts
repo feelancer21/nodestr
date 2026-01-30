@@ -183,5 +183,6 @@ export function useOperatorProfile(pubkey: string) {
         events: timelineEvents,
       } as OperatorProfile;
     },
+    refetchInterval: 30000,
   });
 }

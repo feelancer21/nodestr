@@ -99,5 +99,6 @@ export function useClipFeed() {
       console.log('[useClipFeed] Feed complete, total events:', events.length);
       return events.sort((a, b) => b.event.created_at - a.event.created_at);
     },
+    refetchInterval: 30000,
   });
 }

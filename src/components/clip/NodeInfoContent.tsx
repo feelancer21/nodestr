@@ -1,7 +1,53 @@
+import { Link } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { FormattedText } from '@/components/clip/FormattedText';
 import { truncateMiddle } from '@/lib/utils';
+
+function getContactLink(type: string, value: string): { href: string; external: boolean } | null {
+  const typeLower = type.toLowerCase();
+
+  switch (typeLower) {
+    case 'nostr': {
+      // Could be npub, nprofile, or hex pubkey
+      if (value.startsWith('npub1') || value.startsWith('nprofile1')) {
+        return { href: `/profile/${value}`, external: false };
+      }
+      // Try to encode as npub if it's a hex pubkey
+      if (/^[0-9a-f]{64}$/i.test(value)) {
+        try {
+          const npub = nip19.npubEncode(value);
+          return { href: `/profile/${npub}`, external: false };
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+    case 'email':
+      return { href: `mailto:${value}`, external: true };
+    case 'website':
+    case 'web':
+    case 'url':
+      return { href: value.startsWith('http') ? value : `https://${value}`, external: true };
+    case 'telegram':
+    case 'tg':
+      return { href: `https://t.me/${value.replace('@', '')}`, external: true };
+    case 'twitter':
+    case 'x':
+      return { href: `https://twitter.com/${value.replace('@', '')}`, external: true };
+    case 'github':
+    case 'gh':
+      return { href: `https://github.com/${value}`, external: true };
+    case 'signal':
+      return { href: `https://signal.me/#p/${value}`, external: true };
+    case 'simplex':
+      return { href: `https://simplex.chat/contact#${value}`, external: true };
+    default:
+      return null;
+  }
+}
 
 interface ContactInfo {
   type: string;
@@ -87,31 +133,57 @@ export function NodeInfoContent({ content }: NodeInfoContentProps) {
         <div className="border-t border-border pt-4">
           <h4 className="text-sm font-semibold text-foreground mb-2">Contact</h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {payload.contact_info!.map((contact, idx) => (
-              <div key={idx} className="flex flex-col">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-xs text-label">
-                    {capitalizeFirst(contact.type)}
-                  </span>
-                  {contact.primary && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                      Primary
-                    </Badge>
+            {payload.contact_info!.map((contact, idx) => {
+              const link = getContactLink(contact.type, contact.value);
+
+              return (
+                <div key={idx} className="flex flex-col">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-xs text-label">
+                      {capitalizeFirst(contact.type)}
+                    </span>
+                    {contact.primary && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                        Primary
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {link ? (
+                      link.external ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {truncateMiddle(contact.value, 24)}
+                        </a>
+                      ) : (
+                        <Link
+                          to={link.href}
+                          className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {truncateMiddle(contact.value, 24)}
+                        </Link>
+                      )
+                    ) : (
+                      <span className="text-sm text-foreground font-mono">
+                        {truncateMiddle(contact.value, 24)}
+                      </span>
+                    )}
+                    <CopyButton value={contact.value} className="shrink-0" />
+                  </div>
+                  {contact.note && (
+                    <span className="text-xs text-muted-foreground mt-0.5 break-words [overflow-wrap:anywhere]">
+                      {contact.note}
+                    </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-foreground font-mono">
-                    {truncateMiddle(contact.value, 24)}
-                  </span>
-                  <CopyButton value={contact.value} className="shrink-0" />
-                </div>
-                {contact.note && (
-                  <span className="text-xs text-muted-foreground mt-0.5 break-words [overflow-wrap:anywhere]">
-                    {contact.note}
-                  </span>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

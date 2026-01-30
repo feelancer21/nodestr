@@ -23,8 +23,15 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
   const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
   const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
 
+  const pageTitle = useMemo(() => {
+    if (author.data?.metadata?.name) {
+      return `${author.data.metadata.name} - nodestr`;
+    }
+    return `${genUserName(pubkey || '')} - nodestr`;
+  }, [author.data?.metadata?.name, pubkey]);
+
   useSeoMeta({
-    title: `${genUserName(pubkey || '')} - nodestr`,
+    title: pageTitle,
     description: `Lightning node operator profile on nodestr`,
   });
 
@@ -126,7 +133,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
             </div>
           ) : (
             <div className="ml-24">
-              <h1 className="text-2xl sm:text-3xl font-semibold text-foreground truncate max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">
+              <h1 className="text-2xl sm:text-3xl font-semibold text-foreground truncate">
                 {displayName}
               </h1>
               {npub && (
@@ -183,8 +190,8 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
       )}
 
       {/* Operating Lightning Nodes Section */}
-      <section className="space-y-4">
-        <div>
+      <section className="space-y-4 min-w-0">
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-foreground">
             {profile.isLoading ? (
               <Skeleton className="h-6 w-32" />
@@ -240,7 +247,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
           !profile.isError &&
           profile.data?.operatedNodes &&
           profile.data.operatedNodes.length > 0 && (
-            <div className="grid gap-6">
+            <div className="grid gap-6 min-w-0">
               {profile.data.operatedNodes.map((node) => {
                 // Find the most recent announcement for this node
                 const announcement = profile.data?.events.find(
@@ -257,7 +264,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
                   .sort((a, b) => b.event.created_at - a.event.created_at) || [];
 
                 return (
-                  <div key={node.lightningPubkey} className="space-y-4">
+                  <div key={node.lightningPubkey} className="space-y-4 min-w-0">
                     {/* Announcement Card */}
                     {announcement && (
                       <AnnouncementCard
@@ -273,7 +280,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
 
                     {/* Node Info Cards - indented */}
                     {nodeInfoEvents.length > 0 && (
-                      <div className="ml-4 space-y-4">
+                      <div className="ml-4 space-y-4 min-w-0">
                         {nodeInfoEvents.map((info) => {
                           // Parse d-tag: format is "1:<lightning_pubkey>:<network>"
                           const dTag = info.event.tags.find(([name]) => name === 'd')?.[1] || '';

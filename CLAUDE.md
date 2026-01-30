@@ -583,6 +583,26 @@ function getNetworkBadgeColor(network: string) {
 </Card>
 ```
 
+### Data Table Design Reference
+
+**Preferred Implementation**: [OpenStatus Data Table](https://data-table.openstatus.dev/light)
+
+**Why it fits**:
+- Built on TanStack Table + shadcn/ui (already in stack)
+- Matches existing design system and theming
+- Faceted filters, sorting, command palette integration
+- URL-based state persistence with `nuqs` (optional)
+
+**Key Features**:
+- Multi-column filtering (status, network, date range, text search)
+- Command palette integration (`⌘K` - using `cmdk` package)
+- Responsive design with light/dark mode
+- Advanced query syntax (union filters, range filters, phrase search)
+
+**Usage**:
+- Future: CLIP event management, admin views
+- Reference for complex data table implementations
+
 ## Testing
 
 ### When to Write Tests
