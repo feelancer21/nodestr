@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { FormattedText } from '@/components/clip/FormattedText';
 import { truncateMiddle } from '@/lib/utils';
+import { useAuthor } from '@/hooks/useAuthor';
 
 function getContactLink(type: string, value: string): { href: string; external: boolean } | null {
   const typeLower = type.toLowerCase();
@@ -70,6 +71,89 @@ interface NodeInfoContentProps {
 
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Extract hex pubkey from npub, nprofile, or hex string
+ */
+function extractNostrPubkey(value: string): string | null {
+  // Already hex
+  if (/^[0-9a-f]{64}$/i.test(value)) {
+    return value;
+  }
+  // npub or nprofile
+  if (value.startsWith('npub1') || value.startsWith('nprofile1')) {
+    try {
+      const decoded = nip19.decode(value);
+      if (decoded.type === 'npub') {
+        return decoded.data;
+      }
+      if (decoded.type === 'nprofile') {
+        return decoded.data.pubkey;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get the npub for copying (convert hex to npub if needed)
+ */
+function getNostrCopyValue(value: string): string {
+  // Already npub or nprofile - use as-is
+  if (value.startsWith('npub1') || value.startsWith('nprofile1')) {
+    return value;
+  }
+  // Hex - convert to npub
+  if (/^[0-9a-f]{64}$/i.test(value)) {
+    try {
+      return nip19.npubEncode(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+interface NostrContactDisplayProps {
+  value: string;
+  link: { href: string; external: boolean } | null;
+}
+
+/**
+ * Displays a Nostr contact with resolved username (if available)
+ */
+function NostrContactDisplay({ value, link }: NostrContactDisplayProps) {
+  const pubkey = extractNostrPubkey(value);
+  const author = useAuthor(pubkey || '');
+  const copyValue = getNostrCopyValue(value);
+
+  // Determine display text: username if available, otherwise truncated value
+  const displayText = author.data?.metadata?.name || truncateMiddle(value, 24);
+  const isUsername = !!author.data?.metadata?.name;
+
+  const content = link ? (
+    <Link
+      to={link.href}
+      className={`text-sm text-foreground hover:text-muted-foreground transition ${isUsername ? '' : 'font-mono'}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {displayText}
+    </Link>
+  ) : (
+    <span className={`text-sm text-foreground ${isUsername ? '' : 'font-mono'}`}>
+      {displayText}
+    </span>
+  );
+
+  return (
+    <div className="flex items-center gap-1">
+      {content}
+      <CopyButton value={copyValue} className="shrink-0" />
+    </div>
+  );
 }
 
 export function NodeInfoContent({ content }: NodeInfoContentProps) {
@@ -148,34 +232,38 @@ export function NodeInfoContent({ content }: NodeInfoContentProps) {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    {link ? (
-                      link.external ? (
-                        <a
-                          href={link.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {truncateMiddle(contact.value, 24)}
-                        </a>
+                  {contact.type.toLowerCase() === 'nostr' ? (
+                    <NostrContactDisplay value={contact.value} link={link} />
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      {link ? (
+                        link.external ? (
+                          <a
+                            href={link.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {truncateMiddle(contact.value, 24)}
+                          </a>
+                        ) : (
+                          <Link
+                            to={link.href}
+                            className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {truncateMiddle(contact.value, 24)}
+                          </Link>
+                        )
                       ) : (
-                        <Link
-                          to={link.href}
-                          className="text-sm text-foreground font-mono hover:text-muted-foreground transition"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <span className="text-sm text-foreground font-mono">
                           {truncateMiddle(contact.value, 24)}
-                        </Link>
-                      )
-                    ) : (
-                      <span className="text-sm text-foreground font-mono">
-                        {truncateMiddle(contact.value, 24)}
-                      </span>
-                    )}
-                    <CopyButton value={contact.value} className="shrink-0" />
-                  </div>
+                        </span>
+                      )}
+                      <CopyButton value={contact.value} className="shrink-0" />
+                    </div>
+                  )}
                   {contact.note && (
                     <span className="text-xs text-muted-foreground mt-0.5 break-words [overflow-wrap:anywhere]">
                       {contact.note}
