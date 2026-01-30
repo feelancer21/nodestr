@@ -26,14 +26,17 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
 
   return (
     <Card
-      className="border-border bg-card text-card-foreground cursor-pointer hover:bg-accent/50 transition overflow-hidden"
+      className={`border-border bg-card text-card-foreground transition overflow-hidden ${
+        onClick ? 'cursor-pointer hover:bg-accent/50' : ''
+      }`}
       onClick={(e) => {
+        if (!onClick) return;
         // Don't navigate if clicking on interactive elements
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a')) {
           return;
         }
-        onClick?.();
+        onClick();
       }}
     >
       <UICardHeader className="pb-3">
