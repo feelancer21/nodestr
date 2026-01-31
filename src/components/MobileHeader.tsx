@@ -4,6 +4,7 @@ import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
+import { QuickSearch } from '@/components/search/QuickSearch';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
 import { cn } from '@/lib/utils';
@@ -168,8 +169,10 @@ export function MobileHeader() {
           </SheetContent>
         </Sheet>
 
-        {/* Right side - empty space for future icons */}
-        <div className="w-10" />
+        {/* Right side - QuickSearch for mobile */}
+        <div className="flex-1 max-w-[200px] sm:max-w-xs">
+          <QuickSearch compact />
+        </div>
       </header>
 
       <LoginDialog

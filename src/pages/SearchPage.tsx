@@ -1,16 +1,149 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useSeoMeta } from '@unhead/react';
+import { Search } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { QuickSearchInput } from '@/components/search/QuickSearchInput';
+import { SearchResultPair } from '@/components/search/SearchResultPair';
+import { getMockResults, getMockOperator } from '@/lib/mockSearchData';
+import type { Network } from '@/types/search';
+
+function _SearchResultsSkeleton() {
+  return (
+    <div className="grid gap-4">
+      {[0, 1, 2].map((idx) => (
+        <div key={idx} className="flex flex-col md:flex-row gap-3">
+          <Card className="flex-1 border-border bg-card">
+            <div className="p-4 space-y-3">
+              <div className="flex justify-between">
+                <Skeleton className="h-6 w-32" />
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <Skeleton className="h-4 w-48" />
+              <div className="flex gap-4">
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+            </div>
+          </Card>
+          <Card className="flex-1 border-border bg-card">
+            <div className="p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="h-5 w-24 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function SearchPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const initialNetwork = (searchParams.get('network') as Network) || 'mainnet';
+
+  const [query, setQuery] = useState(initialQuery);
+  const [network, setNetwork] = useState<Network>(initialNetwork);
+
+  // Sync URL params when query or network changes
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query.length >= 3) {
+      params.set('q', query);
+      params.set('network', network);
+    }
+    // Only update if different to avoid infinite loops
+    const currentQ = searchParams.get('q') || '';
+    const currentNetwork = searchParams.get('network') || 'mainnet';
+    if (query !== currentQ || network !== currentNetwork) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [query, network, searchParams, setSearchParams]);
+
+  useSeoMeta({
+    title: query ? `Search: ${query} - nodestr` : 'Search - nodestr',
+    description: 'Search for Lightning nodes on the Nostr network',
+  });
+
+  const results = useMemo(() => {
+    if (query.length < 3) return [];
+    return getMockResults(query, network);
+  }, [query, network]);
+
+  // Sort results: nodes with announcements first, then by capacity
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      const aOperator = getMockOperator(a.public_key);
+      const bOperator = getMockOperator(b.public_key);
+
+      // Announced nodes first
+      if (aOperator.hasAnnouncement !== bOperator.hasAnnouncement) {
+        return aOperator.hasAnnouncement ? -1 : 1;
+      }
+
+      // Then by capacity descending
+      return b.capacity - a.capacity;
+    });
+  }, [results]);
+
+  const hasQuery = query.length >= 3;
+  const hasResults = sortedResults.length > 0;
+
   return (
     <section className="grid gap-6">
-      <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Search</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-700 dark:text-slate-200">
-          Lightning node discovery and operator resolution land in Phase 4.
-        </CardContent>
-      </Card>
+      {/* Search Input - Full width, larger variant */}
+      <div className="w-full">
+        <QuickSearchInput
+          value={query}
+          onChange={setQuery}
+          network={network}
+          onNetworkChange={setNetwork}
+          placeholder="Search Lightning nodes by alias or pubkey..."
+          className="h-12 text-base"
+        />
+      </div>
+
+      {/* Initial State */}
+      {!hasQuery && (
+        <Card className="border-dashed border-border bg-card">
+          <CardContent className="py-12 text-center">
+            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">
+              Enter a search term (at least 3 characters) to find Lightning nodes.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results */}
+      {hasQuery && hasResults && (
+        <div className="grid gap-4">
+          {sortedResults.map((node) => (
+            <SearchResultPair key={node.public_key} node={node} network={network} />
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {hasQuery && !hasResults && (
+        <Card className="border-dashed border-border bg-card">
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">
+              No nodes found for &quot;{query}&quot; on {network}.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Try a different search term or network.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </section>
   );
 }

@@ -18,13 +18,7 @@ CLIP uses **Nostr event kind 38171** (addressable, replaceable) to publish verif
 
 ### Current Development Phase
 
-**Phase 3 (In Progress)** — Nostr Profiles (Operator-Centric)
-
-The project follows an 11-phase development plan (see PROJECT_PLAN.md). Phase 3 establishes operator identity as a first-class concept with profile pages that show:
-- Nostr identity (Kind 0 metadata)
-- Operated Lightning nodes (derived from valid Node Announcements)
-- Node Info payloads grouped by node and network
-- Operator timeline (CLIP events only)
+The project follows an 11-phase development plan (see PROJECT_PLAN.md). 
 
 **Important**: Lightning signature cryptographic verification is **deferred until Phase 10**. Currently, Lightning signatures are format-checked but **assumed valid** to avoid crypto dependencies during early development.
 
@@ -518,6 +512,26 @@ Use `border-t border-border pt-4` between sections.
 <span className="text-xs text-label">Label Text</span>
 ```
 
+**Timestamps with Tooltips:**
+For relative timestamps (e.g., "24d ago") that need a full date tooltip, use the HTML `title` attribute (not the `<Tooltip>` component):
+```tsx
+// Correct - simple title attribute
+<span
+  className="text-xs text-muted-foreground"
+  title={new Date(timestamp * 1000).toLocaleString()}
+>
+  {formatRelativeTime(timestamp)}
+</span>
+
+// Incorrect - don't use Tooltip component for simple timestamp tooltips
+<Tooltip>
+  <TooltipTrigger>...</TooltipTrigger>
+  <TooltipContent>...</TooltipContent>
+</Tooltip>
+```
+
+Use `formatRelativeTime()` from `@/lib/utils` for consistent relative time formatting ("24d ago", "3h ago", etc.).
+
 ### Anti-Patterns (Do NOT Use)
 - `text-slate-500`, `text-slate-600`, etc.
 - `bg-slate-50`, `bg-slate-100`, etc.
@@ -723,6 +737,8 @@ The CLIP implementation must **strictly mirror** the Go reference:
 - Use `TestApp` wrapper for all component tests
 - Reference Go files for protocol details
 - Check Phase 3 scope before adding features
+- **UI Components**: Before creating new components, analyze existing similar components for consistent formatting (typography, spacing, colors)
+- **Reference-First Development**: When building pages similar to existing ones (e.g., Node Page similar to OperatorProfile), read and mirror the existing implementation
 
 ### ❌ Avoid
 
@@ -734,6 +750,8 @@ The CLIP implementation must **strictly mirror** the Go reference:
 - Inventing custom NIPs or extensions
 - Skipping Go reference equivalence checks
 - Adding features outside current phase scope
+- **Inventing new typography sizes**: Always use the Typography Hierarchy from Design System section
+- **Creating UI without reference analysis**: Never build new pages/components without first analyzing similar existing components for formatting patterns
 
 ## Phase 3 Scope (Current Work)
 
