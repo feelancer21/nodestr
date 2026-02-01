@@ -17,6 +17,7 @@ interface NetworkSelectorProps {
 const NETWORKS: { value: Network; label: string; shortLabel: string }[] = [
   { value: 'mainnet', label: 'Mainnet', shortLabel: 'Main' },
   { value: 'testnet', label: 'Testnet', shortLabel: 'Test' },
+  { value: 'testnet4', label: 'Testnet4', shortLabel: 'T4' },
   { value: 'signet', label: 'Signet', shortLabel: 'Sig' },
 ];
 

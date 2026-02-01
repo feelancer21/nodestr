@@ -753,6 +753,63 @@ The CLIP implementation must **strictly mirror** the Go reference:
 - **Inventing new typography sizes**: Always use the Typography Hierarchy from Design System section
 - **Creating UI without reference analysis**: Never build new pages/components without first analyzing similar existing components for formatting patterns
 
+### External API Data Handling
+
+When consuming external APIs (mempool.space, relay responses, etc.):
+- **Always validate data before use**: External APIs may return `null`, `undefined`, or unexpected types
+- **Provide sensible defaults**: Use nullish coalescing (`??`) or default parameters
+- **Type guards for arrays**: Check `Array.isArray()` before mapping/filtering
+- **Graceful degradation**: Display fallback UI rather than crashing
+
+Example:
+```typescript
+// Good - handles null/undefined
+const capacity = node.capacity ?? 0;
+const channels = node.channels ?? 0;
+
+// Bad - crashes on null
+const capacity = node.capacity.toLocaleString(); // TypeError if null
+```
+
+### User Display Name Consistency
+
+When displaying user/operator names:
+- **Always use `genUserName(pubkey)`** as fallback when no name is available
+- **Never display "Unknown"** - use the fun animal name generator instead
+- **Pattern**: `name || genUserName(pubkey)` or `metadata?.name ?? genUserName(pubkey)`
+
+Example:
+```typescript
+import { genUserName } from '@/lib/genUserName';
+
+// Good - consistent with rest of app
+const displayName = author?.metadata?.name || genUserName(pubkey);
+
+// Bad - inconsistent "Unknown" text
+const displayName = author?.metadata?.name || 'Unknown';
+```
+
+### Avatar Fallback Styling
+
+When using `AvatarFallback` with initials:
+- **Use `pubkeyToColor(pubkey)`** for background color
+- **Use white text**: `className="text-white font-bold text-sm"`
+- **Apply style conditionally** when pubkey is available
+
+Example (from `CardHeader.tsx`):
+```typescript
+import { pubkeyToColor } from '@/lib/utils';
+
+const avatarColor = pubkey ? pubkeyToColor(pubkey) : undefined;
+
+<AvatarFallback
+  style={avatarColor ? { backgroundColor: avatarColor } : undefined}
+  className="text-white font-bold text-sm"
+>
+  {initials}
+</AvatarFallback>
+```
+
 ## Phase 3 Scope (Current Work)
 
 ### Completed

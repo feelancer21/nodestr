@@ -3,7 +3,8 @@ import { User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { cn, pubkeyToColor } from '@/lib/utils';
+import { genUserName } from '@/lib/genUserName';
 import type { OperatorInfo } from '@/types/search';
 
 interface OperatorCardProps {
@@ -21,14 +22,18 @@ export function OperatorCard({ operator, className }: OperatorCardProps) {
     }
   };
 
-  const initials = operator.name
-    ? operator.name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '??';
+  // Use genUserName as fallback when no name is available
+  const displayName = operator.name || (operator.pubkey ? genUserName(operator.pubkey) : 'Anonymous');
+
+  const initials = displayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  // Generate avatar color from pubkey (consistent with CardHeader pattern)
+  const avatarColor = operator.pubkey ? pubkeyToColor(operator.pubkey) : undefined;
 
   return (
     <Card
@@ -51,14 +56,17 @@ export function OperatorCard({ operator, className }: OperatorCardProps) {
             {operator.picture ? (
               <AvatarImage src={operator.picture} alt={operator.name || 'Operator'} />
             ) : null}
-            <AvatarFallback>
+            <AvatarFallback
+              style={hasAnnouncement && avatarColor ? { backgroundColor: avatarColor } : undefined}
+              className={hasAnnouncement ? 'text-white font-bold text-sm' : ''}
+            >
               {hasAnnouncement ? initials : <User className="h-4 w-4" />}
             </AvatarFallback>
           </Avatar>
 
           {hasAnnouncement ? (
             <p className="text-sm font-medium text-foreground truncate max-w-full">
-              {operator.name || 'Unknown'}
+              {displayName}
             </p>
           ) : (
             <Badge variant="secondary" className="text-xs">

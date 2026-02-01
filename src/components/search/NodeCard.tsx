@@ -11,7 +11,8 @@ interface NodeCardProps {
   className?: string;
 }
 
-function formatCapacitySats(satoshis: number): string {
+function formatCapacitySats(satoshis: number | null | undefined): string {
+  if (satoshis == null) return '—';
   return satoshis.toLocaleString() + ' sats';
 }
 

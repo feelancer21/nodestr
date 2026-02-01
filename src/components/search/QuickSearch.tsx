@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { QuickSearchInput } from './QuickSearchInput';
 import { QuickSearchResults } from './QuickSearchResults';
-import { getMockResults } from '@/lib/mockSearchData';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import type { Network, MempoolNode } from '@/types/search';
 
 interface QuickSearchProps {
@@ -18,7 +19,14 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
   const [showResults, setShowResults] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const results = query.length >= 3 ? getMockResults(query, network) : [];
+  const debouncedQuery = useDebounce(query, 300);
+
+  const { data: results = [], isLoading, isError } = useMempoolSearch({
+    query: debouncedQuery,
+    network,
+    enabled: debouncedQuery.length >= 3,
+    maxResults: 5,
+  });
 
   // Close results when clicking outside
   useEffect(() => {
@@ -69,6 +77,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
         network={network}
         onNetworkChange={setNetwork}
         onFocus={handleFocus}
+        isLoading={isLoading}
         placeholder={compact ? 'Search...' : 'Search Lightning nodes...'}
         className={compact ? 'h-9' : undefined}
       />
@@ -76,6 +85,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
         <QuickSearchResults
           results={results}
           query={query}
+          isError={isError}
           onResultClick={handleResultClick}
           onShowAll={handleShowAll}
         />

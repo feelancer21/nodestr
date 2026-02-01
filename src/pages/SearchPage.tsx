@@ -6,8 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QuickSearchInput } from '@/components/search/QuickSearchInput';
 import { SearchResultPair } from '@/components/search/SearchResultPair';
-import { getMockResults, getMockOperator } from '@/lib/mockSearchData';
-import type { Network } from '@/types/search';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useMempoolSearch } from '@/hooks/useMempoolSearch';
+import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';
+import type { Network, OperatorInfo } from '@/types/search';
 
 function _SearchResultsSkeleton() {
   return (
@@ -72,26 +74,51 @@ export function SearchPage() {
     description: 'Search for Lightning nodes on the Nostr network',
   });
 
-  const results = useMemo(() => {
-    if (query.length < 3) return [];
-    return getMockResults(query, network);
-  }, [query, network]);
+  const debouncedQuery = useDebounce(query, 300);
+
+  const { data: results = [], isLoading } = useMempoolSearch({
+    query: debouncedQuery,
+    network,
+    enabled: debouncedQuery.length >= 3,
+  });
+
+  // Extract all Lightning pubkeys from search results
+  const lightningPubkeys = useMemo(() => {
+    return results.map((node) => node.public_key);
+  }, [results]);
+
+  // Lookup CLIP announcements for all nodes
+  const { data: announcements = {} } = useClipAnnouncementLookup(lightningPubkeys);
+
+  // Build operator map with profile data
+  const operatorMap = useMemo(() => {
+    const map = new Map<string, OperatorInfo>();
+    for (const lnPubkey of lightningPubkeys) {
+      const announcement = announcements[lnPubkey];
+      map.set(lnPubkey, {
+        pubkey: announcement?.nostrPubkey,
+        hasAnnouncement: announcement !== null,
+        lastAnnouncement: announcement?.createdAt,
+      });
+    }
+    return map;
+  }, [lightningPubkeys, announcements]);
 
   // Sort results: nodes with announcements first, then by capacity
   const sortedResults = useMemo(() => {
     return [...results].sort((a, b) => {
-      const aOperator = getMockOperator(a.public_key);
-      const bOperator = getMockOperator(b.public_key);
+      const aOperator = operatorMap.get(a.public_key);
+      const bOperator = operatorMap.get(b.public_key);
 
       // Announced nodes first
-      if (aOperator.hasAnnouncement !== bOperator.hasAnnouncement) {
-        return aOperator.hasAnnouncement ? -1 : 1;
+      if (aOperator?.hasAnnouncement !== bOperator?.hasAnnouncement) {
+        return aOperator?.hasAnnouncement ? -1 : 1;
       }
 
       // Then by capacity descending
       return b.capacity - a.capacity;
     });
-  }, [results]);
+  }, [results, operatorMap]);
 
   const hasQuery = query.length >= 3;
   const hasResults = sortedResults.length > 0;
@@ -122,17 +149,28 @@ export function SearchPage() {
         </Card>
       )}
 
+      {/* Loading State */}
+      {isLoading && hasQuery && <_SearchResultsSkeleton />}
+
       {/* Results */}
-      {hasQuery && hasResults && (
+      {!isLoading && hasQuery && hasResults && (
         <div className="grid gap-4">
-          {sortedResults.map((node) => (
-            <SearchResultPair key={node.public_key} node={node} network={network} />
-          ))}
+          {sortedResults.map((node) => {
+            const operator = operatorMap.get(node.public_key) || { hasAnnouncement: false };
+            return (
+              <SearchResultPair
+                key={node.public_key}
+                node={node}
+                network={network}
+                operator={operator}
+              />
+            );
+          })}
         </div>
       )}
 
       {/* Empty State */}
-      {hasQuery && !hasResults && (
+      {!isLoading && hasQuery && !hasResults && (
         <Card className="border-dashed border-border bg-card">
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground">

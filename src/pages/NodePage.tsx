@@ -4,24 +4,14 @@ import { useSeoMeta } from '@unhead/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NodeBanner } from '@/components/node/NodeBanner';
-import { getMockResults, getMockOperator, MOCK_NODES_MAINNET, MOCK_NODES_SIGNET } from '@/lib/mockSearchData';
-import type { Network, MempoolNode } from '@/types/search';
+import { NodeInfoContent } from '@/components/clip/NodeInfoContent';
+import { useNodeDetails } from '@/hooks/useNodeDetails';
+import type { Network } from '@/types/search';
 
-const VALID_NETWORKS = ['mainnet', 'testnet', 'signet'] as const;
+const VALID_NETWORKS = ['mainnet', 'testnet', 'testnet4', 'signet'] as const;
 
 function isValidNetwork(network: string | undefined): network is Network {
   return network !== undefined && VALID_NETWORKS.includes(network as Network);
-}
-
-function findNodeByPubkey(pubkey: string, network: Network): MempoolNode | undefined {
-  // First try searching with mock data
-  const searchResults = getMockResults(pubkey, network);
-  const exactMatch = searchResults.find((n) => n.public_key === pubkey);
-  if (exactMatch) return exactMatch;
-
-  // Also check all mock nodes directly
-  const allNodes = network === 'signet' ? MOCK_NODES_SIGNET : MOCK_NODES_MAINNET;
-  return allNodes.find((n) => n.public_key === pubkey);
 }
 
 function NodePageSkeleton() {
@@ -84,15 +74,7 @@ export function NodePage() {
   const isValidNet = isValidNetwork(networkParam);
   const network = isValidNet ? networkParam : 'mainnet';
 
-  const node = useMemo(() => {
-    if (!pubkey || !isValidNet) return undefined;
-    return findNodeByPubkey(pubkey, network);
-  }, [pubkey, network, isValidNet]);
-
-  const operator = useMemo(() => {
-    if (!pubkey) return { hasAnnouncement: false };
-    return getMockOperator(pubkey);
-  }, [pubkey]);
+  const { node, operator, nodeInfo, isLoading, isError } = useNodeDetails(pubkey || '', network);
 
   const pageTitle = useMemo(() => {
     if (node) {
@@ -120,7 +102,30 @@ export function NodePage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             The network &quot;{networkParam}&quot; is not valid. Supported networks are:
-            mainnet, testnet, and signet.
+            mainnet, testnet, testnet4, and signet.
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return <NodePageSkeleton />;
+  }
+
+  // Error state
+  if (isError) {
+    return (
+      <section className="grid gap-6">
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-foreground">
+              Error Loading Node
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Failed to load node data. Please try again later.
           </CardContent>
         </Card>
       </section>
@@ -153,19 +158,16 @@ export function NodePage() {
       {/* Node Banner - combines node info and operator */}
       <NodeBanner node={node} network={network} operator={operator} />
 
-      {/* Node Info Placeholder - only shown if operator has announced */}
-      {operator.hasAnnouncement && (
+      {/* Node Info - only shown if nodeInfo exists */}
+      {nodeInfo && (
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground">
               Node Info
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            <p>
-              Node Info payloads from this operator will be displayed here once
-              CLIP events are integrated.
-            </p>
+          <CardContent>
+            <NodeInfoContent content={nodeInfo.content} />
           </CardContent>
         </Card>
       )}

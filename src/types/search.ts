@@ -1,4 +1,4 @@
-export type Network = 'mainnet' | 'testnet' | 'signet';
+export type Network = 'mainnet' | 'testnet' | 'testnet4' | 'signet';
 
 export interface MempoolNode {
   public_key: string;

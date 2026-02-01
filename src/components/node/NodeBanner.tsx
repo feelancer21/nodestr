@@ -2,7 +2,8 @@ import { ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { CopyButton } from '@/components/clip/CopyButton';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn, formatRelativeTime, pubkeyToColor } from '@/lib/utils';
+import { genUserName } from '@/lib/genUserName';
 import type { MempoolNode, Network, OperatorInfo } from '@/types/search';
 
 interface NodeBannerProps {
@@ -11,7 +12,8 @@ interface NodeBannerProps {
   operator: OperatorInfo;
 }
 
-function formatCapacitySats(satoshis: number): string {
+function formatCapacitySats(satoshis: number | null | undefined): string {
+  if (satoshis == null) return '—';
   return satoshis.toLocaleString() + ' sats';
 }
 
@@ -48,14 +50,18 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
   const isOffline = node.status === 0;
   const mempoolUrl = getMempoolUrl(node.public_key, network);
 
-  const operatorInitials = operator.name
-    ? operator.name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '??';
+  // Use genUserName as fallback when no name is available
+  const operatorDisplayName = operator.name || (operator.pubkey ? genUserName(operator.pubkey) : 'Anonymous');
+
+  const operatorInitials = operatorDisplayName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  // Generate avatar color from pubkey (consistent with CardHeader pattern)
+  const avatarColor = operator.pubkey ? pubkeyToColor(operator.pubkey) : undefined;
 
   const lastAnnouncementTooltip = operator.lastAnnouncement
     ? new Date(operator.lastAnnouncement * 1000).toLocaleString()
@@ -97,7 +103,7 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
           <div>
             <span className="text-xs text-label">Channels</span>
             <p className="text-sm font-medium text-foreground">
-              {node.channels.toLocaleString()}
+              {node.channels?.toLocaleString() ?? '—'}
             </p>
           </div>
           <div className="ml-auto">
@@ -127,7 +133,12 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                 {operator.picture ? (
                   <AvatarImage src={operator.picture} alt={operator.name || 'Operator'} />
                 ) : null}
-                <AvatarFallback className="text-xs">{operatorInitials}</AvatarFallback>
+                <AvatarFallback
+                  style={avatarColor ? { backgroundColor: avatarColor } : undefined}
+                  className="text-white font-bold text-sm"
+                >
+                  {operatorInitials}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -142,7 +153,7 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                   )}
                 </div>
                 <p className="text-sm font-medium text-foreground truncate">
-                  {operator.name || 'Unknown'}
+                  {operatorDisplayName}
                 </p>
               </div>
             </a>
