@@ -23,7 +23,7 @@ export function SearchResultPair({ node, network, operator, className }: SearchR
   };
 
   return (
-    <div className={cn('flex flex-row gap-3 items-stretch', className)}>
+    <div className={cn('flex flex-row gap-3 items-stretch overflow-hidden', className)}>
       <div className="flex-1 min-w-0">
         <NodeCard node={node} network={network} />
       </div>

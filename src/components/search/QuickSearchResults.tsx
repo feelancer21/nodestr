@@ -8,6 +8,7 @@ interface QuickSearchResultsProps {
   isError?: boolean;
   onResultClick: (node: MempoolNode) => void;
   onShowAll: () => void;
+  onOperatorLookup?: () => void;
 }
 
 export function QuickSearchResults({
@@ -16,6 +17,7 @@ export function QuickSearchResults({
   isError = false,
   onResultClick,
   onShowAll,
+  onOperatorLookup,
 }: QuickSearchResultsProps) {
   if (isError) {
     return (
@@ -33,6 +35,16 @@ export function QuickSearchResults({
         <div className="p-4 text-sm text-muted-foreground text-center">
           No nodes found for &apos;{query}&apos;
         </div>
+        {onOperatorLookup && (
+          <div className="border-t border-border px-3 py-2">
+            <button
+              onClick={onOperatorLookup}
+              className="w-full text-sm text-link hover:underline text-center"
+            >
+              Search for operator with this Lightning pubkey
+            </button>
+          </div>
+        )}
       </Card>
     );
   }

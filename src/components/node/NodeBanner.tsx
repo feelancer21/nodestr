@@ -2,6 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { CopyButton } from '@/components/clip/CopyButton';
+import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { cn, formatRelativeTime, pubkeyToColor } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
 import type { MempoolNode, Network, OperatorInfo } from '@/types/search';
@@ -69,8 +70,10 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
 
   return (
     <div className={cn('rounded-3xl border border-border overflow-hidden', isOffline && 'opacity-75')}>
-      {/* Banner gradient area */}
-      <div className="h-32 relative bg-gradient-to-br from-amber-100 via-slate-50 to-white dark:from-amber-500/20 dark:via-slate-900/80 dark:to-slate-950" />
+      {/* Banner gradient area - only show when operator has picture */}
+      {operator.picture && (
+        <div className="h-32 relative bg-gradient-to-br from-amber-100 via-slate-50 to-white dark:from-amber-500/20 dark:via-slate-900/80 dark:to-slate-950" />
+      )}
 
       {/* Content area */}
       <div className="relative px-6 sm:px-8 pb-6 pt-4 bg-card">
@@ -150,6 +153,9 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                     >
                       {formatRelativeTime(operator.lastAnnouncement)}
                     </span>
+                  )}
+                  {operator.announcementEvent && (
+                    <ViewSourceModal event={operator.announcementEvent} />
                   )}
                 </div>
                 <p className="text-sm font-medium text-foreground truncate">

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ export function LnPubPage() {
   const { lightningPubkey } = useParams<{ lightningPubkey: string }>();
   const navigate = useNavigate();
   const { nostr } = useNostr();
+  const [showLoadingText, setShowLoadingText] = useState(false);
 
   const query = useQuery({
     queryKey: ['lnpub-lookup', lightningPubkey],
@@ -51,10 +52,19 @@ export function LnPubPage() {
     }
   }, [nostrPubkey, navigate]);
 
+  useEffect(() => {
+    if (query.isLoading) {
+      const timer = setTimeout(() => setShowLoadingText(true), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowLoadingText(false);
+    }
+  }, [query.isLoading]);
+
   if (!lightningPubkey) {
     return (
       <Card className="border-border bg-card">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+        <CardContent className="py-12 min-h-[200px] flex items-center justify-center text-center text-sm text-muted-foreground">
           Invalid Lightning pubkey.
         </CardContent>
       </Card>
@@ -66,9 +76,11 @@ export function LnPubPage() {
       <Card className="border-border bg-card">
         <CardContent className="py-12 space-y-4">
           <Skeleton className="h-4 w-48 mx-auto" />
-          <p className="text-center text-sm text-muted-foreground">
-            Looking up Lightning node operator...
-          </p>
+          {showLoadingText && (
+            <p className="text-center text-sm text-muted-foreground">
+              Looking up Lightning node operator...
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -77,12 +89,14 @@ export function LnPubPage() {
   if (query.isError || !query.data) {
     return (
       <Card className="border-border bg-card">
-        <CardContent className="py-12 text-center text-sm text-muted-foreground">
-          No operator found for this Lightning node.
-          <br />
-          <span className="font-mono text-xs mt-2 block break-all">
-            {lightningPubkey}
-          </span>
+        <CardContent className="py-12 min-h-[200px] flex items-center justify-center text-center text-sm text-muted-foreground">
+          <div>
+            No operator found for this Lightning node.
+            <br />
+            <span className="font-mono text-xs mt-2 block break-all">
+              {lightningPubkey}
+            </span>
+          </div>
         </CardContent>
       </Card>
     );

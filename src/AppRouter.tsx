@@ -31,7 +31,7 @@ export function AppRouter() {
           <Route path="/profile/:nip19Identifier" element={<ProfilePage />} />
           <Route path="/p/:nip19Identifier" element={<ProfilePage />} />
           {/* Lightning pubkey lookup - redirects to operator profile */}
-          <Route path="/lnpub/:lightningPubkey" element={<LnPubPage />} />
+          <Route path="/lightning/operator/:lightningPubkey" element={<LnPubPage />} />
           {/* Lightning node page by network and pubkey */}
           <Route path="/lightning/:network/node/:pubkey" element={<NodePage />} />
           {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}

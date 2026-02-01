@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NodeBanner } from '@/components/node/NodeBanner';
 import { NodeInfoContent } from '@/components/clip/NodeInfoContent';
+import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { useNodeDetails } from '@/hooks/useNodeDetails';
+import { formatRelativeTime } from '@/lib/utils';
 import type { Network } from '@/types/search';
 
 const VALID_NETWORKS = ['mainnet', 'testnet', 'testnet4', 'signet'] as const;
@@ -162,9 +164,20 @@ export function NodePage() {
       {nodeInfo && (
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-base font-semibold text-foreground">
-              Node Info
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold text-foreground">
+                Node Info
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs text-muted-foreground"
+                  title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
+                >
+                  {formatRelativeTime(nodeInfo.event.created_at)}
+                </span>
+                <ViewSourceModal event={nodeInfo.event} />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <NodeInfoContent content={nodeInfo.content} />

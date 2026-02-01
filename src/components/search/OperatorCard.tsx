@@ -41,6 +41,7 @@ export function OperatorCard({ operator, className }: OperatorCardProps) {
       className={cn(
         'border-border bg-card h-full',
         hasAnnouncement && 'cursor-pointer transition-colors hover:bg-muted/50',
+        !hasAnnouncement && 'opacity-60',
         className
       )}
     >

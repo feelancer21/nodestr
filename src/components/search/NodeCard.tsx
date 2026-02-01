@@ -63,8 +63,8 @@ export function NodeCard({ node, network, className }: NodeCardProps) {
         {/* Main content row: Alias/Pubkey + Capacity */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
           {/* Left: Alias and Pubkey */}
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-foreground truncate">
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <h3 className="text-base font-semibold text-foreground truncate max-w-full">
               {node.alias}
             </h3>
             <div className="flex items-center gap-1 mt-1">

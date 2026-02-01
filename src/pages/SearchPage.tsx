@@ -9,7 +9,14 @@ import { SearchResultPair } from '@/components/search/SearchResultPair';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';
-import type { Network, OperatorInfo } from '@/types/search';
+import type { Network, OperatorInfo, MempoolNode } from '@/types/search';
+
+function isValidLightningPubkey(input: string): boolean {
+  if (input.length !== 66) return false;
+  if (!/^[0-9a-fA-F]+$/.test(input)) return false;
+  const prefix = input.slice(0, 2).toLowerCase();
+  return prefix === '02' || prefix === '03';
+}
 
 function _SearchResultsSkeleton() {
   return (
@@ -84,8 +91,13 @@ export function SearchPage() {
 
   // Extract all Lightning pubkeys from search results
   const lightningPubkeys = useMemo(() => {
-    return results.map((node) => node.public_key);
-  }, [results]);
+    const pubkeys = results.map((node) => node.public_key);
+    // Also include the query if it's a valid Lightning pubkey (for operator lookup)
+    if (isValidLightningPubkey(debouncedQuery) && !pubkeys.includes(debouncedQuery)) {
+      pubkeys.push(debouncedQuery);
+    }
+    return pubkeys;
+  }, [results, debouncedQuery]);
 
   // Lookup CLIP announcements for all nodes
   const { data: announcements = {} } = useClipAnnouncementLookup(lightningPubkeys);
@@ -123,6 +135,10 @@ export function SearchPage() {
   const hasQuery = query.length >= 3;
   const hasResults = sortedResults.length > 0;
 
+  // Check if query is a valid Lightning pubkey (for special operator search)
+  const isLnPubkey = hasQuery && isValidLightningPubkey(debouncedQuery);
+  const shouldShowOperatorLink = !isLoading && hasQuery && !hasResults && isLnPubkey;
+
   return (
     <section className="grid gap-6">
       {/* Search Input - Full width, larger variant */}
@@ -140,10 +156,10 @@ export function SearchPage() {
       {/* Initial State */}
       {!hasQuery && (
         <Card className="border-dashed border-border bg-card">
-          <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">
-              Enter a search term (at least 3 characters) to find Lightning nodes.
+          <CardContent className="py-12 min-h-[200px] flex flex-col items-center justify-center text-center">
+            <Search className="h-12 w-12 text-muted-foreground mb-4 opacity-50" />
+            <p className="text-xs text-muted-foreground">
+              Uses mempool.space API
             </p>
           </CardContent>
         </Card>
@@ -154,7 +170,7 @@ export function SearchPage() {
 
       {/* Results */}
       {!isLoading && hasQuery && hasResults && (
-        <div className="grid gap-4">
+        <div className="grid gap-4 max-w-4xl">
           {sortedResults.map((node) => {
             const operator = operatorMap.get(node.public_key) || { hasAnnouncement: false };
             return (
@@ -169,10 +185,27 @@ export function SearchPage() {
         </div>
       )}
 
-      {/* Empty State */}
-      {!isLoading && hasQuery && !hasResults && (
+      {/* Empty State - Special case for Lightning pubkey */}
+      {shouldShowOperatorLink && (
+        <div className="grid gap-4 max-w-4xl">
+          <SearchResultPair
+            node={{
+              public_key: debouncedQuery,
+              alias: 'Unknown Node',
+              capacity: 0,
+              channels: 0,
+              status: 1,
+            } as MempoolNode}
+            network={network}
+            operator={operatorMap.get(debouncedQuery) || { hasAnnouncement: false }}
+          />
+        </div>
+      )}
+
+      {/* Empty State - Regular */}
+      {!isLoading && hasQuery && !hasResults && !shouldShowOperatorLink && (
         <Card className="border-dashed border-border bg-card">
-          <CardContent className="py-12 text-center">
+          <CardContent className="py-12 min-h-[200px] flex flex-col items-center justify-center text-center">
             <p className="text-muted-foreground">
               No nodes found for &quot;{query}&quot; on {network}.
             </p>

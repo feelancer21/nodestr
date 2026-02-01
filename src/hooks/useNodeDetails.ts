@@ -82,7 +82,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
       let latestEvent: NostrEvent | null = null;
       for (const event of events) {
         const verification = verifyClipEvent(event, now);
-        if (!verification.ok) {
+        if (!verification.ok || !verification.identifier) {
           console.log('[useNodeDetails] Event verification failed:', verification.reason);
           continue;
         }
@@ -130,6 +130,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
     picture: authorQuery.data?.metadata?.picture,
     hasAnnouncement: announcement !== null,
     lastAnnouncement: announcement?.createdAt,
+    announcementEvent: announcement?.event,
   };
 
   return {

@@ -43,7 +43,10 @@ export function useMempoolSearch({
       // Sort by capacity descending
       const sorted = [...data.nodes].sort((a, b) => b.capacity - a.capacity);
 
-      return sorted.slice(0, maxResults);
+      // Filter out offline nodes (status === 0)
+      const online = sorted.filter(n => n.status !== 0);
+
+      return online.slice(0, maxResults);
     },
     enabled: enabled && minLength && hasApi,
     staleTime: 60_000, // 1 minute

@@ -1,5 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
+import type { NostrEvent } from '@nostrify/nostrify';
 import { verifyClipEvent, CLIP_ANNOUNCEMENT, CLIP_KIND } from '@/lib/clip';
 
 interface AnnouncementMap {
@@ -7,6 +8,7 @@ interface AnnouncementMap {
     nostrPubkey: string;
     createdAt: number;
     eventId: string;
+    event: NostrEvent;
   } | null;
 }
 
@@ -56,6 +58,7 @@ export function useClipAnnouncementLookup(lightningPubkeys: string[]) {
             nostrPubkey: event.pubkey,
             createdAt: event.created_at,
             eventId: event.id,
+            event: event,
           };
         }
       }
