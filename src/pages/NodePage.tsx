@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NodeBanner } from '@/components/node/NodeBanner';
 import { NodeInfoContent } from '@/components/clip/NodeInfoContent';
 import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { useNodeDetails } from '@/hooks/useNodeDetails';
 import { formatRelativeTime } from '@/lib/utils';
-import type { Network } from '@/types/search';
+import { isValidLightningPubkey } from '@/lib/lightning';
+import type { Network, MempoolNode } from '@/types/search';
 
 const VALID_NETWORKS = ['mainnet', 'testnet', 'testnet4', 'signet'] as const;
 
@@ -127,15 +128,57 @@ export function NodePage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Failed to load node data. Please try again later.
+            Failed to load node data. Try selecting a different network.
           </CardContent>
         </Card>
       </section>
     );
   }
 
-  // Node not found
+  // Node not found - check if valid Lightning pubkey
   if (!node) {
+    // If it's a valid Lightning pubkey, create a synthetic node
+    if (isValidLightningPubkey(pubkey || '')) {
+      const syntheticNode: MempoolNode = {
+        public_key: pubkey!,
+        alias: 'Unknown Node',
+        capacity: null as unknown as number,
+        channels: null as unknown as number,
+        status: 1,
+      };
+
+      return (
+        <section className="grid gap-6">
+          <NodeBanner node={syntheticNode} network={network} operator={operator} />
+
+          {nodeInfo && (
+            <Card className="border-border bg-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold text-foreground">
+                    Node Info
+                  </CardTitle>
+                  <span
+                    className="text-xs text-muted-foreground"
+                    title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
+                  >
+                    {formatRelativeTime(nodeInfo.event.created_at)}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <NodeInfoContent content={nodeInfo.content} />
+              </CardContent>
+              <CardFooter className="pt-0 flex justify-end">
+                <ViewSourceModal event={nodeInfo.event} />
+              </CardFooter>
+            </Card>
+          )}
+        </section>
+      );
+    }
+
+    // Invalid pubkey - show error
     return (
       <section className="grid gap-6">
         <Card className="border-border bg-card">
@@ -168,20 +211,20 @@ export function NodePage() {
               <CardTitle className="text-base font-semibold text-foreground">
                 Node Info
               </CardTitle>
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-xs text-muted-foreground"
-                  title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
-                >
-                  {formatRelativeTime(nodeInfo.event.created_at)}
-                </span>
-                <ViewSourceModal event={nodeInfo.event} />
-              </div>
+              <span
+                className="text-xs text-muted-foreground"
+                title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
+              >
+                {formatRelativeTime(nodeInfo.event.created_at)}
+              </span>
             </div>
           </CardHeader>
           <CardContent>
             <NodeInfoContent content={nodeInfo.content} />
           </CardContent>
+          <CardFooter className="pt-0 flex justify-end">
+            <ViewSourceModal event={nodeInfo.event} />
+          </CardFooter>
         </Card>
       )}
     </section>

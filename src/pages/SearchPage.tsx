@@ -9,14 +9,8 @@ import { SearchResultPair } from '@/components/search/SearchResultPair';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';
+import { isValidLightningPubkey } from '@/lib/lightning';
 import type { Network, OperatorInfo, MempoolNode } from '@/types/search';
-
-function isValidLightningPubkey(input: string): boolean {
-  if (input.length !== 66) return false;
-  if (!/^[0-9a-fA-F]+$/.test(input)) return false;
-  const prefix = input.slice(0, 2).toLowerCase();
-  return prefix === '02' || prefix === '03';
-}
 
 function _SearchResultsSkeleton() {
   return (

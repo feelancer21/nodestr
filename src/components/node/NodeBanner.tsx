@@ -28,6 +28,8 @@ function getNetworkBadgeClasses(network: Network): string {
       return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-200';
     case 'testnet':
       return 'bg-blue-500/10 text-blue-700 dark:text-blue-200';
+    case 'testnet4':
+      return 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-200';
     case 'signet':
       return 'bg-amber-500/10 text-amber-700 dark:text-amber-200';
     default:
@@ -125,44 +127,49 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
         {/* Operator section - integrated in banner */}
         {operator.hasAnnouncement ? (
           <div className="border-t border-border mt-4 pt-4">
-            <a
-              href={operator.pubkey ? `/profile/${operator.pubkey}` : undefined}
-              className={cn(
-                'flex items-center gap-3',
-                operator.pubkey && 'hover:opacity-80 transition-opacity'
-              )}
-            >
-              <Avatar className="h-10 w-10">
-                {operator.picture ? (
-                  <AvatarImage src={operator.picture} alt={operator.name || 'Operator'} />
-                ) : null}
-                <AvatarFallback
-                  style={avatarColor ? { backgroundColor: avatarColor } : undefined}
-                  className="text-white font-bold text-sm"
-                >
-                  {operatorInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-label">Operator</span>
-                  {operator.lastAnnouncement && (
-                    <span
-                      className="text-xs text-muted-foreground"
-                      title={lastAnnouncementTooltip}
-                    >
-                      {formatRelativeTime(operator.lastAnnouncement)}
-                    </span>
-                  )}
-                  {operator.announcementEvent && (
-                    <ViewSourceModal event={operator.announcementEvent} />
-                  )}
+            <div className="flex items-start justify-between gap-3">
+              <a
+                href={operator.pubkey ? `/profile/${operator.pubkey}` : undefined}
+                className={cn(
+                  'flex items-center gap-3 flex-1 min-w-0',
+                  operator.pubkey && 'hover:opacity-80 transition-opacity'
+                )}
+              >
+                <Avatar className="h-10 w-10">
+                  {operator.picture ? (
+                    <AvatarImage src={operator.picture} alt={operator.name || 'Operator'} />
+                  ) : null}
+                  <AvatarFallback
+                    style={avatarColor ? { backgroundColor: avatarColor } : undefined}
+                    className="text-white font-bold text-sm"
+                  >
+                    {operatorInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-label">Operator</span>
+                  </div>
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {operatorDisplayName}
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-foreground truncate">
-                  {operatorDisplayName}
-                </p>
+              </a>
+              {/* Right: Vertical stack - Timestamp on top, ViewSource below */}
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {operator.lastAnnouncement && (
+                  <span
+                    className="text-xs text-muted-foreground"
+                    title={lastAnnouncementTooltip}
+                  >
+                    {formatRelativeTime(operator.lastAnnouncement)}
+                  </span>
+                )}
+                {operator.announcementEvent && (
+                  <ViewSourceModal event={operator.announcementEvent} />
+                )}
               </div>
-            </a>
+            </div>
           </div>
         ) : (
           <div className="border-t border-border mt-4 pt-4">

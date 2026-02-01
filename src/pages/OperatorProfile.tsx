@@ -6,6 +6,7 @@ import { useOperatorProfile } from '@/hooks/useOperatorProfile';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnnouncementCard, NodeInfoCard } from '@/components/clip';
 import { CopyButton } from '@/components/clip/CopyButton';
@@ -236,9 +237,11 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
         )}
 
         {!profile.isLoading && !profile.isError && profile.data?.operatedNodes.length === 0 && (
-          <Card className="border-border bg-card">
-            <CardContent className="py-8 text-center text-sm text-muted-foreground">
-              This user has not published any Lightning node announcements.
+          <Card className="border-border bg-card w-full">
+            <CardContent className="py-12 flex items-center justify-center min-h-[120px]">
+              <p className="text-sm text-muted-foreground text-center">
+                This user has not published any Lightning node announcements.
+              </p>
             </CardContent>
           </Card>
         )}
