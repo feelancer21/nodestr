@@ -19,7 +19,7 @@ export function useMempoolSearch({
   query,
   network,
   enabled = true,
-  maxResults = 10,
+  maxResults,
 }: UseMempoolSearchOptions) {
   const { baseUrl } = useMempoolConfig();
 
@@ -46,7 +46,7 @@ export function useMempoolSearch({
       // Filter out offline nodes (status === 0)
       const online = sorted.filter(n => n.status !== 0);
 
-      return online.slice(0, maxResults);
+      return maxResults ? online.slice(0, maxResults) : online;
     },
     enabled: enabled && minLength && hasApi,
     staleTime: 60_000, // 1 minute
