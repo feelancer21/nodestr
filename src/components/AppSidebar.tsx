@@ -103,8 +103,6 @@ export function AppSidebar() {
               <a href="https://shakespeare.diy" className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200">
                 Shakespeare
               </a>
-              <br />
-              commit [<a href={`https://github.com/feelancer21/nodestr/commit/${__COMMIT_HASH__}`} className="text-emerald-700 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200" target="_blank" rel="noopener noreferrer">{__COMMIT_HASH__}</a>]
             </p>
           </div>
         </div>

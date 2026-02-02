@@ -1,24 +1,10 @@
 import path from "node:path";
-import { execSync } from "node:child_process";
 
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vitest/config";
 
-function getCommitHash(): string {
-  try {
-    return execSync('git rev-parse --short=7 HEAD')
-      .toString()
-      .trim();
-  } catch {
-    return 'dev';
-  }
-}
-
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
-  define: {
-    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
-  },
   server: {
     host: "::",
     port: 8080,
