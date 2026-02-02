@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { cn } from '@/lib/utils';
 import type { MempoolNode, Network } from '@/types/search';
+import { useSearch } from '@/contexts/SearchContext';
 
 interface NodeCardProps {
   node: MempoolNode;
@@ -36,9 +37,11 @@ function getNetworkBadgeClasses(network: Network): string {
 
 export function NodeCard({ node, network, className }: NodeCardProps) {
   const navigate = useNavigate();
+  const { setQuery } = useSearch();
   const isOffline = node.status === 0;
 
   const handleClick = () => {
+    setQuery('');
     navigate(`/lightning/${network}/node/${node.public_key}`);
   };
 

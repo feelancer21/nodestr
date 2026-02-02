@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
 import type { OperatorInfo } from '@/types/search';
+import { useSearch } from '@/contexts/SearchContext';
 
 interface OperatorCardProps {
   operator: OperatorInfo;
@@ -14,10 +15,12 @@ interface OperatorCardProps {
 
 export function OperatorCard({ operator, className }: OperatorCardProps) {
   const navigate = useNavigate();
+  const { setQuery } = useSearch();
   const hasAnnouncement = operator.hasAnnouncement;
 
   const handleClick = () => {
     if (hasAnnouncement && operator.pubkey) {
+      setQuery('');
       navigate(`/profile/${operator.pubkey}`);
     }
   };
