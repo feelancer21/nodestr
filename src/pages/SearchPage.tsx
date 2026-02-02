@@ -1,23 +1,24 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { QuickSearchInput } from '@/components/search/QuickSearchInput';
+import { SearchBanner } from '@/components/search/SearchBanner';
 import { SearchResultPair } from '@/components/search/SearchResultPair';
+import { useSearch, useSearchState } from '@/contexts/SearchContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';
 import { isValidLightningPubkey } from '@/lib/lightning';
 import type { Network, OperatorInfo, MempoolNode } from '@/types/search';
 
-function _SearchResultsSkeleton() {
+function SearchResultsSkeleton() {
   return (
     <div className="grid gap-4">
       {[0, 1, 2].map((idx) => (
-        <div key={idx} className="flex flex-col md:flex-row gap-3">
-          <Card className="flex-1 border-border bg-card">
+        <div key={idx} className="grid grid-cols-2 gap-3">
+          <Card className="border-border bg-card">
             <div className="p-4 space-y-3">
               <div className="flex justify-between">
                 <Skeleton className="h-6 w-32" />
@@ -30,7 +31,7 @@ function _SearchResultsSkeleton() {
               </div>
             </div>
           </Card>
-          <Card className="flex-1 border-border bg-card">
+          <Card className="border-border bg-card">
             <div className="p-4">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-10 w-10 rounded-full" />
@@ -49,11 +50,31 @@ function _SearchResultsSkeleton() {
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
-  const initialNetwork = (searchParams.get('network') as Network) || 'mainnet';
+  const { query, network } = useSearchState();
+  const { setQuery, setNetwork, setSearchPageActive } = useSearch();
+  const initializedRef = useRef(false);
 
-  const [query, setQuery] = useState(initialQuery);
-  const [network, setNetwork] = useState<Network>(initialNetwork);
+  // Sync from URL params on mount (only once)
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const urlQuery = searchParams.get('q') || '';
+    const urlNetwork = (searchParams.get('network') as Network) || 'mainnet';
+
+    if (urlQuery) {
+      setQuery(urlQuery);
+    }
+    if (urlNetwork && urlNetwork !== 'mainnet') {
+      setNetwork(urlNetwork);
+    }
+  }, [searchParams, setQuery, setNetwork]);
+
+  // Set search page active on mount, inactive on unmount
+  useEffect(() => {
+    setSearchPageActive(true);
+    return () => setSearchPageActive(false);
+  }, [setSearchPageActive]);
 
   // Sync URL params when query or network changes
   useEffect(() => {
@@ -135,15 +156,11 @@ export function SearchPage() {
 
   return (
     <section className="grid gap-6">
-      {/* Search Input - Full width, larger variant */}
-      <div className="w-full">
-        <QuickSearchInput
-          value={query}
-          onChange={setQuery}
-          network={network}
-          onNetworkChange={setNetwork}
+      {/* Search Input - Only visible on mobile (<sm), tablet/desktop use header SearchBanner */}
+      <div className="sm:hidden">
+        <SearchBanner
+          variant="page"
           placeholder="Search Lightning nodes by alias or pubkey..."
-          className="h-12 text-base"
         />
       </div>
 
@@ -160,11 +177,11 @@ export function SearchPage() {
       )}
 
       {/* Loading State */}
-      {isLoading && hasQuery && <_SearchResultsSkeleton />}
+      {isLoading && hasQuery && <SearchResultsSkeleton />}
 
       {/* Results */}
       {!isLoading && hasQuery && hasResults && (
-        <div className="grid gap-4 max-w-4xl">
+        <div className="grid gap-4">
           {sortedResults.map((node) => {
             const operator = operatorMap.get(node.public_key) || { hasAnnouncement: false };
             return (
@@ -181,7 +198,7 @@ export function SearchPage() {
 
       {/* Empty State - Special case for Lightning pubkey */}
       {shouldShowOperatorLink && (
-        <div className="grid gap-4 max-w-4xl">
+        <div className="grid gap-4">
           <SearchResultPair
             node={{
               public_key: debouncedQuery,

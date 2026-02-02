@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
-import { QuickSearch } from '@/components/search/QuickSearch';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
 import { cn } from '@/lib/utils';
@@ -61,8 +60,6 @@ export function AppSidebar() {
             </div>
             <h1 className="text-base font-semibold">Lightning Nodes on Nostr</h1>
           </div>
-          {/* Quick Search */}
-          <QuickSearch className="w-full" />
           <nav className="space-y-2 text-sm">
             {navItems.map(({ path, label, icon: Icon }) => (
               <button

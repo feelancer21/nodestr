@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Menu, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
-import { QuickSearch } from '@/components/search/QuickSearch';
+import { SearchBanner } from '@/components/search/SearchBanner';
+import { useSearch } from '@/contexts/SearchContext';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,9 @@ const navItems = [
 
 export function MobileHeader() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, removeLogin } = useLoggedInAccounts();
+  const { reset: resetSearch } = useSearch();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -75,9 +78,15 @@ export function MobileHeader() {
     setMobileMenuOpen(false);
   };
 
+  const handleSearchIconClick = () => {
+    // Clear search state when navigating to search page via icon
+    resetSearch();
+    navigate('/search');
+  };
+
   return (
     <>
-      {/* Mobile Top Bar */}
+      {/* Mobile/Tablet Top Bar - visible below xl */}
       <header
         className={cn(
           'fixed top-0 left-0 right-0 z-40 xl:hidden',
@@ -169,9 +178,22 @@ export function MobileHeader() {
           </SheetContent>
         </Sheet>
 
-        {/* Right side - QuickSearch for mobile */}
-        <div className="flex-1 max-w-[200px] sm:max-w-xs">
-          <QuickSearch compact />
+        {/* Right side - Tablet (sm+): SearchBanner, Mobile (<sm): Search icon */}
+        <div className="flex-1 flex justify-end">
+          {/* Tablet: SearchBanner (always visible, dropdown disabled on /search via SearchContext) */}
+          <div className="hidden sm:block flex-1 max-w-xs">
+            <SearchBanner variant="header" placeholder="Search..." />
+          </div>
+
+          {/* Mobile: Search icon only */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="sm:hidden h-10 w-10 rounded-full"
+            onClick={handleSearchIconClick}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
         </div>
       </header>
 

@@ -11,6 +11,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
 import { NWCProvider } from '@/contexts/NWCContext';
+import { SearchProvider } from '@/contexts/SearchContext';
 import { AppConfig } from '@/contexts/AppContext';
 import AppRouter from './AppRouter';
 
@@ -47,18 +48,20 @@ export function App() {
     <UnheadProvider head={head}>
       <AppProvider storageKey="nostr:app-config" defaultConfig={defaultConfig}>
         <QueryClientProvider client={queryClient}>
-          <NostrLoginProvider storageKey='nostr:login'>
-            <NostrProvider>
-              <NWCProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Suspense>
-                    <AppRouter />
-                  </Suspense>
-                </TooltipProvider>
-              </NWCProvider>
-            </NostrProvider>
-          </NostrLoginProvider>
+          <SearchProvider>
+            <NostrLoginProvider storageKey='nostr:login'>
+              <NostrProvider>
+                <NWCProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <Suspense>
+                      <AppRouter />
+                    </Suspense>
+                  </TooltipProvider>
+                </NWCProvider>
+              </NostrProvider>
+            </NostrLoginProvider>
+          </SearchProvider>
         </QueryClientProvider>
       </AppProvider>
     </UnheadProvider>

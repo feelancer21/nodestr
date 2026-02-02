@@ -6,7 +6,6 @@ import { useOperatorProfile } from '@/hooks/useOperatorProfile';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AnnouncementCard, NodeInfoCard } from '@/components/clip';
 import { CopyButton } from '@/components/clip/CopyButton';
