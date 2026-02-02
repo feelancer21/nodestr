@@ -17,7 +17,7 @@ function getCommitHash(): string {
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
   define: {
-    __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+    'import.meta.env.VITE_COMMIT_HASH': JSON.stringify(getCommitHash()),
   },
   server: {
     host: "::",
