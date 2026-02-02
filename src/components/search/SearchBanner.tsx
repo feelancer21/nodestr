@@ -22,6 +22,7 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
   const { query, network, isSearchPageActive } = useSearchState();
   const { setQuery, setNetwork } = useSearch();
   const [showResults, setShowResults] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const debouncedQuery = useDebounce(query, 300);
@@ -33,6 +34,11 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
     maxResults: 5,
   });
 
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [results]);
+
   // Close results when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -41,6 +47,7 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
         !containerRef.current.contains(event.target as Node)
       ) {
         setShowResults(false);
+        setHighlightedIndex(-1);
       }
     }
 
@@ -50,17 +57,20 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
 
   const handleResultClick = (node: MempoolNode) => {
     setShowResults(false);
+    setHighlightedIndex(-1);
     setQuery('');
     navigate(`/lightning/${network}/node/${node.public_key}`);
   };
 
   const handleShowAll = () => {
     setShowResults(false);
+    setHighlightedIndex(-1);
     navigate(`/search?q=${encodeURIComponent(query)}&network=${network}`);
   };
 
   const handleOperatorLookup = () => {
     setShowResults(false);
+    setHighlightedIndex(-1);
     setQuery('');
     navigate(`/lightning/operator/${debouncedQuery}`);
   };
@@ -73,6 +83,7 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
+    setHighlightedIndex(-1);
     if (value.length >= 3 && variant === 'header' && !isSearchPageActive) {
       setShowResults(true);
     } else {
@@ -85,6 +96,44 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
     : 'Search Lightning nodes...';
 
   const showDropdown = variant === 'header' && showResults && query.length >= 3 && !isSearchPageActive;
+  const showOperatorLookup = isValidLightningPubkey(debouncedQuery);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown) return;
+
+    const totalItems = results.length + (results.length > 0 ? 1 : 0) + (showOperatorLookup ? 1 : 0);
+    // results.length items + "Show all results" button + optional "Search for operator" button
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < totalItems - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev > 0 ? prev - 1 : totalItems - 1
+        );
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < results.length) {
+          handleResultClick(results[highlightedIndex]);
+        } else if (highlightedIndex === results.length) {
+          handleShowAll();
+        } else if (showOperatorLookup && highlightedIndex === results.length + 1) {
+          handleOperatorLookup();
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        setShowResults(false);
+        setHighlightedIndex(-1);
+        break;
+    }
+  };
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
@@ -107,6 +156,7 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder ?? defaultPlaceholder}
           className={cn(
             'flex-1 h-10 px-3 py-2 text-sm bg-transparent',
@@ -133,7 +183,8 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
           isError={isError}
           onResultClick={handleResultClick}
           onShowAll={handleShowAll}
-          onOperatorLookup={isValidLightningPubkey(debouncedQuery) ? handleOperatorLookup : undefined}
+          onOperatorLookup={showOperatorLookup ? handleOperatorLookup : undefined}
+          highlightedIndex={highlightedIndex}
         />
       )}
     </div>
@@ -148,6 +199,7 @@ interface DropdownResultsProps {
   onResultClick: (node: MempoolNode) => void;
   onShowAll: () => void;
   onOperatorLookup?: () => void;
+  highlightedIndex: number;
 }
 
 function DropdownResults({
@@ -157,6 +209,7 @@ function DropdownResults({
   onResultClick,
   onShowAll,
   onOperatorLookup,
+  highlightedIndex,
 }: DropdownResultsProps) {
   if (isError) {
     return (
@@ -178,7 +231,10 @@ function DropdownResults({
           <div className="border-t border-border px-3 py-2">
             <button
               onClick={onOperatorLookup}
-              className="w-full text-sm text-link hover:underline text-center"
+              className={cn(
+                "w-full text-sm text-link hover:underline text-center",
+                highlightedIndex === 0 && "bg-muted"
+              )}
             >
               Search for operator with this Lightning pubkey
             </button>
@@ -193,11 +249,12 @@ function DropdownResults({
   return (
     <Card className="absolute top-full left-0 right-0 mt-1 z-50 border-border bg-popover shadow-md overflow-hidden">
       <div className="py-1">
-        {displayResults.map((node) => (
+        {displayResults.map((node, index) => (
           <QuickSearchItem
             key={node.public_key}
             node={node}
             onClick={() => onResultClick(node)}
+            isHighlighted={index === highlightedIndex}
           />
         ))}
       </div>
@@ -205,7 +262,10 @@ function DropdownResults({
         <div className="border-t border-border px-3 py-2">
           <button
             onClick={onShowAll}
-            className="w-full text-sm text-link hover:underline text-center"
+            className={cn(
+              "w-full text-sm text-link hover:underline text-center",
+              highlightedIndex === results.length && "bg-muted"
+            )}
           >
             Show all results
           </button>

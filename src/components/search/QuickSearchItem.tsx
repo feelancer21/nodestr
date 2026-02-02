@@ -4,6 +4,7 @@ import type { MempoolNode } from '@/types/search';
 interface QuickSearchItemProps {
   node: MempoolNode;
   onClick: () => void;
+  isHighlighted?: boolean;
 }
 
 function formatCapacity(satoshis: number): string {
@@ -15,7 +16,7 @@ function truncatePubkey(pubkey: string): string {
   return pubkey.slice(0, 8) + '...';
 }
 
-export function QuickSearchItem({ node, onClick }: QuickSearchItemProps) {
+export function QuickSearchItem({ node, onClick, isHighlighted }: QuickSearchItemProps) {
   const isOffline = node.status === 0;
 
   return (
@@ -24,7 +25,8 @@ export function QuickSearchItem({ node, onClick }: QuickSearchItemProps) {
       className={cn(
         'w-full flex items-center justify-between px-3 py-2 text-left',
         'hover:bg-muted transition-colors rounded-sm',
-        isOffline && 'opacity-50'
+        isOffline && 'opacity-50',
+        isHighlighted && 'bg-muted'
       )}
     >
       <div className="flex flex-col min-w-0">
