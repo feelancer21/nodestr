@@ -10,13 +10,19 @@ interface CopyButtonProps {
 export function CopyButton({ value, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
-  const copyWithFallback = (text: string): boolean => {
-    // Fallback using temporary textarea - works in all contexts
+  const copyWithFallback = (text: string, containerElement: HTMLElement): boolean => {
+    // Fallback using temporary textarea
+    // IMPORTANT: Insert into the button's container (not document.body) to work inside
+    // Radix UI Dialogs which use focus-trapping portals
     const textArea = document.createElement('textarea');
     textArea.value = text;
-    // Prevent scrolling to bottom
-    textArea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
-    document.body.appendChild(textArea);
+    // Position offscreen but within the same stacking context
+    textArea.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+    textArea.setAttribute('readonly', '');
+    textArea.setAttribute('tabindex', '-1');
+    textArea.setAttribute('aria-hidden', 'true');
+
+    containerElement.appendChild(textArea);
     textArea.focus();
     textArea.select();
 
@@ -27,13 +33,14 @@ export function CopyButton({ value, className }: CopyButtonProps) {
       success = false;
     }
 
-    document.body.removeChild(textArea);
+    containerElement.removeChild(textArea);
     return success;
   };
 
-  const handleCopy = async (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
 
+    const button = e.currentTarget;
     let success = false;
 
     // Try modern clipboard API first (only works in secure contexts)
@@ -47,8 +54,10 @@ export function CopyButton({ value, className }: CopyButtonProps) {
     }
 
     // Use fallback if modern API failed or unavailable
+    // Pass the button element so textarea is inserted in the same DOM context
+    // (critical for working inside Radix UI Dialog portals with focus-trapping)
     if (!success) {
-      success = copyWithFallback(value);
+      success = copyWithFallback(value, button);
     }
 
     if (success) {

@@ -157,7 +157,7 @@ export function AnnouncementForm({
             showValidIcon && 'border-emerald-500 focus-visible:ring-emerald-500',
             showErrorIcon && 'border-destructive focus-visible:ring-destructive'
           )}
-          rows={4}
+          rows={2}
           disabled={isSubmitting}
         />
         <p className="text-xs text-muted-foreground mt-1">
