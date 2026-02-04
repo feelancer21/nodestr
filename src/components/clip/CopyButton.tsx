@@ -10,30 +10,50 @@ interface CopyButtonProps {
 export function CopyButton({ value, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
 
+  const copyWithFallback = (text: string): boolean => {
+    // Fallback using temporary textarea - works in all contexts
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    // Prevent scrolling to bottom
+    textArea.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    let success = false;
+    try {
+      success = document.execCommand('copy');
+    } catch {
+      success = false;
+    }
+
+    document.body.removeChild(textArea);
+    return success;
+  };
+
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    e.preventDefault();
 
-    try {
-      await navigator.clipboard.writeText(value);
+    let success = false;
+
+    // Try modern clipboard API first (only works in secure contexts)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(value);
+        success = true;
+      } catch {
+        // Fall through to fallback
+      }
+    }
+
+    // Use fallback if modern API failed or unavailable
+    if (!success) {
+      success = copyWithFallback(value);
+    }
+
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback for older browsers or non-secure contexts
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = value;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Silent failure
-      }
     }
   };
 

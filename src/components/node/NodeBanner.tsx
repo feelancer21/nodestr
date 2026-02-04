@@ -1,10 +1,15 @@
-import { ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { ExternalLink, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
+import { AnnouncementModal } from './AnnouncementModal';
 import { cn, formatRelativeTime, pubkeyToColor } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useToast } from '@/hooks/useToast';
 import type { MempoolNode, Network, OperatorInfo } from '@/types/search';
 
 interface NodeBannerProps {
@@ -52,6 +57,19 @@ function getMempoolUrl(pubkey: string, network: Network): string {
 export function NodeBanner({ node, network, operator }: NodeBannerProps) {
   const isOffline = node.status === 0;
   const mempoolUrl = getMempoolUrl(node.public_key, network);
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const { user } = useCurrentUser();
+  const { toast } = useToast();
+
+  const handleClaimClick = () => {
+    if (!user) {
+      toast({
+        description: "Please login to claim node",
+      });
+      return;
+    }
+    setAnnouncementModalOpen(true);
+  };
 
   // Use genUserName as fallback when no name is available
   const operatorDisplayName = operator.name || (operator.pubkey ? genUserName(operator.pubkey) : 'Anonymous');
@@ -155,7 +173,7 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                   </p>
                 </div>
               </a>
-              {/* Right: Vertical stack - Timestamp on top, ViewSource below */}
+              {/* Right: Vertical stack - Timestamp on top, icons below */}
               <div className="flex flex-col items-end gap-1 shrink-0">
                 {operator.lastAnnouncement && (
                   <span
@@ -165,9 +183,20 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                     {formatRelativeTime(operator.lastAnnouncement)}
                   </span>
                 )}
-                {operator.announcementEvent && (
-                  <ViewSourceModal event={operator.announcementEvent} />
-                )}
+                <div className="flex items-center gap-2">
+                  {user && (
+                    <button
+                      onClick={handleClaimClick}
+                      className="text-muted-foreground hover:text-foreground transition"
+                      title="Renew Announcement"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                  )}
+                  {operator.announcementEvent && (
+                    <ViewSourceModal event={operator.announcementEvent} />
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -178,10 +207,21 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
               <Badge variant="secondary" className="text-xs">
                 Not Announced
               </Badge>
+              <Button variant="outline" size="sm" onClick={handleClaimClick} className="ml-auto">
+                Claim Node
+              </Button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Announcement Modal */}
+      <AnnouncementModal
+        open={announcementModalOpen}
+        onOpenChange={setAnnouncementModalOpen}
+        lightningPubkey={node.public_key}
+        isRenew={!!operator.hasAnnouncement}
+      />
     </div>
   );
 }
