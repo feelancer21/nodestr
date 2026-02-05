@@ -7,6 +7,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { useCurrentUser } from './useCurrentUser';
 import { useToast } from './useToast';
 import { CLIP_KIND } from '@/lib/clip';
+import { verifyLightningSignature } from '@/lib/lnVerify';
 
 /**
  * zbase32 alphabet as defined by the CLIP protocol.
@@ -131,6 +132,12 @@ export function useAnnouncementPublish({
       // Validate signature format
       if (!isValidZbase32(lightningSignature)) {
         throw new Error('Invalid signature format. Please paste the zbase32 signature from your Lightning node.');
+      }
+
+      // Cryptographically verify the Lightning signature
+      const verification = verifyLightningSignature(eventHash, lightningSignature.trim(), lightningPubkey);
+      if (!verification.valid) {
+        throw new Error(`Lightning signature verification failed: ${verification.error}`);
       }
 
       // Step 6: Add Lightning signature tag

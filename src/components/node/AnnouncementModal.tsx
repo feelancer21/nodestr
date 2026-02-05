@@ -8,6 +8,7 @@ import {
 import { AnnouncementForm } from './AnnouncementForm';
 import { useAnnouncementPublish, isValidZbase32 } from '@/hooks/useAnnouncementPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { verifyLightningSignature } from '@/lib/lnVerify';
 
 interface AnnouncementModalProps {
   open: boolean;
@@ -66,9 +67,15 @@ export function AnnouncementModal({
     if (!isValidZbase32(value.trim())) {
       setSignatureError('Invalid signature format. Please paste the zbase32 signature from your Lightning node.');
     } else {
-      setSignatureError(undefined);
+      // zbase32 format OK, now verify cryptographically
+      const verification = verifyLightningSignature(eventHash, value.trim(), lightningPubkey);
+      if (!verification.valid) {
+        setSignatureError(`Signature verification failed: ${verification.error}`);
+      } else {
+        setSignatureError(undefined);
+      }
     }
-  }, []);
+  }, [eventHash, lightningPubkey]);
 
   // Build preview event that includes signature when entered
   const displayEvent = useMemo(() => {
