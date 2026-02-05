@@ -62,7 +62,7 @@ On Resume after STOP: Product Owner selects new model. Restart from step 1.
 |-----------|--------|
 | Requirements unclear OR critical risks unconfirmed | **STOP** – Present findings, request clarification |
 | Recommended model exceeds Product Owner's approved ceiling | **STOP** – Present findings, explain why a higher model is necessary |
-| Recommended model within approved ceiling AND no ambiguities | **CONTINUE** Remember the decision about the model. This is only relevant for step 6 in phase B. You, as the tech lead, must carry out all other steps in phase B yourself.  |
+| Recommended model within approved ceiling AND no ambiguities | Remember the decision about the model. This is only relevant for step 6 in phase B. You, as the tech lead, must carry out all other steps in phase B yourself.  **CONTINUE** to Phase B now |
 | Large or complex requirement AND incremental implementation not declined | **STOP** – Propose splitting into implementation blocks, request confirmation |
 
 **On Resume after STOP:**
