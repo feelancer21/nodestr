@@ -12,6 +12,7 @@ export interface OperatorInfo {
   pubkey?: string;
   name?: string;
   picture?: string;
+  banner?: string;
   hasAnnouncement: boolean;
   lastAnnouncement?: number;  // unix timestamp
   announcementEvent?: import('@nostrify/nostrify').NostrEvent;

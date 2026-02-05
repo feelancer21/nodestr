@@ -151,7 +151,7 @@ export function AnnouncementForm({
         <Textarea
           value={signature}
           onChange={(e) => onSignatureChange(e.target.value)}
-          placeholder="Paste zbase32 signature here..."
+          placeholder="Paste signature here..."
           className={cn(
             'mt-1 font-mono text-sm',
             showValidIcon && 'border-emerald-500 focus-visible:ring-emerald-500',
@@ -160,9 +160,6 @@ export function AnnouncementForm({
           rows={2}
           disabled={isSubmitting}
         />
-        <p className="text-xs text-muted-foreground mt-1">
-          The signature should contain only zbase32 characters (letters and numbers, no special characters).
-        </p>
       </div>
 
       {/* Collapsible Event JSON */}

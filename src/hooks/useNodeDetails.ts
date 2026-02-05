@@ -128,6 +128,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
     pubkey: announcement?.nostrPubkey,
     name: authorQuery.data?.metadata?.name,
     picture: authorQuery.data?.metadata?.picture,
+    banner: authorQuery.data?.metadata?.banner,
     hasAnnouncement: announcement !== null,
     lastAnnouncement: announcement?.createdAt,
     announcementEvent: announcement?.event,

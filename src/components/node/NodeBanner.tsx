@@ -65,6 +65,7 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
     if (!user) {
       toast({
         description: "Please login to claim node",
+        duration: 1000,
       });
       return;
     }
@@ -90,10 +91,18 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
 
   return (
     <div className={cn('rounded-3xl border border-border overflow-hidden', isOffline && 'opacity-75')}>
-      {/* Banner gradient area - only show when operator has picture */}
-      {operator.picture && (
+      {/* Banner area - show operator banner if available, else gradient if has picture */}
+      {operator.banner ? (
+        <div className="h-32 relative">
+          <img
+            src={operator.banner}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ) : operator.picture ? (
         <div className="h-32 relative bg-gradient-to-br from-amber-100 via-slate-50 to-white dark:from-amber-500/20 dark:via-slate-900/80 dark:to-slate-950" />
-      )}
+      ) : null}
 
       {/* Content area */}
       <div className="relative px-6 sm:px-8 pb-6 pt-4 bg-card">

@@ -18,6 +18,15 @@ export default {
 				'2xl': '1400px'
 			}
 		},
+		screens: {
+			'xxs': '320px',
+			'xs': '400px',
+			'sm': '640px',
+			'md': '768px',
+			'lg': '1024px',
+			'xl': '1280px',
+			'2xl': '1536px',
+		},
 		extend: {
 			colors: {
 				border: 'hsl(var(--border))',

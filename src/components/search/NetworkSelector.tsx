@@ -38,8 +38,8 @@ export function NetworkSelector({
           className
         )}
       >
-        <span className="hidden sm:inline">{currentNetwork.label}</span>
-        <span className="sm:hidden">{currentNetwork.shortLabel}</span>
+        <span className="hidden xxs:inline">{currentNetwork.label}</span>
+        <span className="xxs:hidden">{currentNetwork.shortLabel}</span>
         <ChevronDown className="h-3 w-3 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[100px]">

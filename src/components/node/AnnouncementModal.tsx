@@ -132,7 +132,7 @@ export function AnnouncementModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>
-            {isRenew ? 'Renew Node Announcement' : 'Announce Node Ownership'}
+            {isRenew ? 'Renew Node Announcement' : 'Announce Node'}
           </DialogTitle>
         </DialogHeader>
         <div className="overflow-auto max-h-[75vh] px-1">

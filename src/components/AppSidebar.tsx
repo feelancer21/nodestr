@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, MessageCircle, PenSquare, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
+import { Home, MessageCircle, PlugZap, Settings, Star, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
@@ -10,8 +10,6 @@ import LoginDialog from '@/components/auth/LoginDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
-  { path: '/search', label: 'Search', icon: Search },
-  { path: '/publish', label: 'Publish', icon: PenSquare },
   { path: '/dms', label: 'DMs', icon: MessageCircle },
   { path: '/settings', label: 'Settings', icon: Settings },
 ] as const;
