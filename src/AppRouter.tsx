@@ -4,7 +4,6 @@ import { AppLayout } from "./components/AppLayout";
 
 import HomePage from "./pages/HomePage";
 import SearchPage from "./pages/SearchPage";
-import PublishPage from "./pages/PublishPage";
 import DMsPage from "./pages/DMsPage";
 import SettingsPage from "./pages/SettingsPage";
 import { NIP19Page } from "./pages/NIP19Page";
@@ -22,7 +21,6 @@ export function AppRouter() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/publish" element={<PublishPage />} />
           <Route path="/dms" element={<DMsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           {/* Diagnostic routes */}

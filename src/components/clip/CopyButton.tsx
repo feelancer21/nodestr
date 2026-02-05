@@ -23,7 +23,7 @@ export function CopyButton({ value, className }: CopyButtonProps) {
     textArea.setAttribute('aria-hidden', 'true');
 
     containerElement.appendChild(textArea);
-    textArea.focus();
+    textArea.focus({ preventScroll: true });
     textArea.select();
 
     let success = false;
@@ -68,6 +68,7 @@ export function CopyButton({ value, className }: CopyButtonProps) {
 
   return (
     <button
+      type="button"
       onClick={handleCopy}
       className={cn(
         'inline-flex items-center justify-center p-1 rounded hover:bg-accent transition-colors',

@@ -43,7 +43,11 @@ export function AppSidebar() {
   };
 
   const handleNavClick = (path: string) => {
-    navigate(path);
+    if (location.pathname === path) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate(path);
+    }
   };
 
   return (
