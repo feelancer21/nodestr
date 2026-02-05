@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CopyButton } from './CopyButton';
 import type { NostrEvent } from '@nostrify/nostrify';
-import { serializeEvent, sha256Hex } from '@/lib/nostrUtils';
+import { getEventHash } from 'nostr-tools';
 
 interface ViewSourceModalProps {
   event: NostrEvent;
@@ -62,7 +62,10 @@ function computeClipHash(event: NostrEvent): string {
   const filteredTags = event.tags.filter(tag => tag[0] !== 'sig');
 
   // Create event without sig tags
+  // Add empty id and sig fields to satisfy NostrEvent type (not used by getEventHash)
   const eventWithoutSig = {
+    id: '',
+    sig: '',
     pubkey: event.pubkey,
     created_at: event.created_at,
     kind: event.kind,
@@ -70,9 +73,9 @@ function computeClipHash(event: NostrEvent): string {
     content: event.content,
   };
 
-  // Serialize and hash (same as Nostr event ID computation)
-  const serialized = serializeEvent(eventWithoutSig);
-  return sha256Hex(serialized);
+  // Use nostr-tools getEventHash which implements NIP-01:
+  // SHA256(JSON.stringify([0, pubkey, created_at, kind, tags, content]))
+  return getEventHash(eventWithoutSig as NostrEvent);
 }
 
 export function ViewSourceModal({ event }: ViewSourceModalProps) {
