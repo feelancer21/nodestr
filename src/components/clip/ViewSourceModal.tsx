@@ -145,7 +145,7 @@ export function ViewSourceModal({ event }: ViewSourceModalProps) {
                   </p>
 
                   <div>
-                    <span className="text-xs text-label">CLIP Hash (Event ID without sig tags)</span>
+                    <span className="text-xs text-label">Lightning Hash (Event ID without sig tags)</span>
                     <div className="flex items-center gap-2 mt-1">
                       <code className="text-xs font-mono text-foreground break-all flex-1 bg-background p-2 rounded">
                         {clipHash}
@@ -156,7 +156,7 @@ export function ViewSourceModal({ event }: ViewSourceModalProps) {
 
                   {clipSignature && (
                     <div>
-                      <span className="text-xs text-label">CLIP Signature (sig tag)</span>
+                      <span className="text-xs text-label">Lightning Signature (sig tag)</span>
                       <div className="flex items-center gap-2 mt-1">
                         <code className="text-xs font-mono text-foreground break-all flex-1 bg-background p-2 rounded">
                           {clipSignature}

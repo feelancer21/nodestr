@@ -740,6 +740,12 @@ The CLIP implementation must **strictly mirror** the Go reference:
 - **UI Components**: Before creating new components, analyze existing similar components for consistent formatting (typography, spacing, colors)
 - **Reference-First Development**: When building pages similar to existing ones (e.g., Node Page similar to OperatorProfile), read and mirror the existing implementation
 
+### React Portal Event Bubbling
+
+React portals (`DialogPortal`, `createPortal`) render DOM nodes outside the parent DOM tree, but React synthetic events still bubble through the **React component tree**. This means a click inside a `<Dialog>` rendered in a portal will bubble to the parent Card's `onClick` handler, even though the dialog is in `document.body` in the DOM.
+
+**Mitigation**: The shared `DialogContent` component in `src/components/ui/dialog.tsx` wraps portal children in a `<div onClick={stopPropagation}>` to prevent this. If you create other portal-based components inside clickable containers, apply the same pattern.
+
 ### ❌ Avoid
 
 - Modifying `App.tsx` without reading it first

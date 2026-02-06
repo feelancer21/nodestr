@@ -57,7 +57,7 @@ export function HomePage() {
               <CardTitle className="text-base font-semibold text-foreground">Relay Error</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-foreground">
-              We couldn't load CLIP events from your relays. Try again in a moment.
+              We couldn't load events from your relays. Try again in a moment.
             </CardContent>
           </Card>
         )}

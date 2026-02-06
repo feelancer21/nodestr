@@ -31,6 +31,9 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
       }`}
       onClick={(e) => {
         if (!onClick) return;
+        // Don't navigate if user is selecting text
+        const selection = window.getSelection()?.toString();
+        if (selection) return;
         // Don't navigate if clicking on interactive elements
         const target = e.target as HTMLElement;
         if (target.closest('button') || target.closest('a')) {
