@@ -33,3 +33,7 @@ yarn.lock
 !.env.example
 
 .claude/settings.*
+
+# Project management
+issues/
+planning/

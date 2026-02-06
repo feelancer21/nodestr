@@ -6,6 +6,7 @@ import { nip19 } from 'nostr-tools';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CLIP_KIND, verifyClipEvent, CLIP_ANNOUNCEMENT } from '@/lib/clip';
+import { isValidLightningPubkey } from '@/lib/lightning';
 
 export function LnPubPage() {
   const { lightningPubkey } = useParams<{ lightningPubkey: string }>();
@@ -36,7 +37,7 @@ export function LnPubPage() {
 
       return null;
     },
-    enabled: !!lightningPubkey,
+    enabled: !!lightningPubkey && isValidLightningPubkey(lightningPubkey),
   });
 
   const nostrPubkey = query.data?.pubkey;
@@ -66,6 +67,22 @@ export function LnPubPage() {
       <Card className="border-border bg-card">
         <CardContent className="py-12 min-h-[200px] flex items-center justify-center text-center text-sm text-muted-foreground">
           Invalid Lightning pubkey.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!isValidLightningPubkey(lightningPubkey)) {
+    return (
+      <Card className="border-border bg-card">
+        <CardContent className="py-12 min-h-[200px] flex items-center justify-center text-center text-sm text-muted-foreground">
+          <div>
+            Invalid Lightning pubkey format.
+            <br />
+            <span className="font-mono text-xs mt-2 block break-all">
+              {lightningPubkey}
+            </span>
+          </div>
         </CardContent>
       </Card>
     );

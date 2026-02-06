@@ -202,7 +202,7 @@ export function SearchPage() {
           <SearchResultPair
             node={{
               public_key: debouncedQuery,
-              alias: 'Unknown Node',
+              alias: debouncedQuery,
               capacity: 0,
               channels: 0,
               status: 1,

@@ -22,6 +22,7 @@ function truncatePubkey(pubkey: string): string {
   return pubkey.slice(0, 6) + '...' + pubkey.slice(-4);
 }
 
+
 function getNetworkBadgeClasses(network: Network): string {
   switch (network) {
     case 'mainnet':

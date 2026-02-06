@@ -7,6 +7,7 @@ import { useAuthor } from './useAuthor';
 import type { Network, MempoolNode, OperatorInfo } from '@/types/search';
 import { getSearchEndpoint, NETWORKS_WITH_API } from '@/lib/mempool';
 import { CLIP_KIND, CLIP_NODE_INFO, verifyClipEvent } from '@/lib/clip';
+import { isValidLightningPubkey } from '@/lib/lightning';
 
 interface NodeInfoData {
   event: NostrEvent;
@@ -46,7 +47,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
       const exactMatch = data.nodes.find((n: MempoolNode) => n.public_key === pubkey);
       return exactMatch;
     },
-    enabled: hasApi && pubkey.length > 0,
+    enabled: hasApi && pubkey.length > 0 && isValidLightningPubkey(pubkey),
     staleTime: 60_000, // 1 minute
   });
 
@@ -119,7 +120,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
 
       return { event: latestEvent, content };
     },
-    enabled: pubkey.length > 0,
+    enabled: pubkey.length > 0 && isValidLightningPubkey(pubkey),
     staleTime: 60_000,
   });
 

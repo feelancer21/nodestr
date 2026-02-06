@@ -76,20 +76,34 @@ export function NodePage() {
 
   const isValidNet = isValidNetwork(networkParam);
   const network = isValidNet ? networkParam : 'mainnet';
+  const isValidPubkey = isValidLightningPubkey(pubkey || '');
 
-  const { node, operator, nodeInfo, isLoading, isError } = useNodeDetails(pubkey || '', network);
+  const { node, operator, nodeInfo, isLoading } = useNodeDetails(pubkey || '', network);
+
+  // Effective node: use mempool data if available, otherwise synthetic for valid pubkeys
+  const effectiveNode = useMemo(() => {
+    if (node) return node;
+    if (!isValidPubkey) return undefined;
+    return {
+      public_key: pubkey!,
+      alias: pubkey!,
+      capacity: null as unknown as number,
+      channels: null as unknown as number,
+      status: 1,
+    } as MempoolNode;
+  }, [node, isValidPubkey, pubkey]);
 
   const pageTitle = useMemo(() => {
-    if (node) {
-      return `${node.alias} - nodestr`;
+    if (effectiveNode) {
+      return `${effectiveNode.alias} - nodestr`;
     }
     return 'Lightning Node - nodestr';
-  }, [node]);
+  }, [effectiveNode]);
 
   useSeoMeta({
     title: pageTitle,
-    description: node
-      ? `Lightning node ${node.alias} on ${network}`
+    description: effectiveNode
+      ? `Lightning node on ${network}`
       : 'Lightning node on nodestr',
   });
 
@@ -112,84 +126,19 @@ export function NodePage() {
     );
   }
 
-  // Loading state
-  if (isLoading) {
-    return <NodePageSkeleton />;
-  }
-
-  // Error state
-  if (isError) {
+  // Invalid pubkey - show immediately, no loading needed
+  if (!isValidPubkey) {
     return (
       <section className="grid gap-6">
         <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground">
-              Error Loading Node
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Failed to load node data. Try selecting a different network.
-          </CardContent>
-        </Card>
-      </section>
-    );
-  }
-
-  // Node not found - check if valid Lightning pubkey
-  if (!node) {
-    // If it's a valid Lightning pubkey, create a synthetic node
-    if (isValidLightningPubkey(pubkey || '')) {
-      const syntheticNode: MempoolNode = {
-        public_key: pubkey!,
-        alias: 'Unknown Node',
-        capacity: null as unknown as number,
-        channels: null as unknown as number,
-        status: 1,
-      };
-
-      return (
-        <section className="grid gap-6">
-          <NodeBanner node={syntheticNode} network={network} operator={operator} />
-
-          {nodeInfo && (
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-foreground">
-                    Node Info
-                  </CardTitle>
-                  <span
-                    className="text-xs text-muted-foreground"
-                    title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
-                  >
-                    {formatRelativeTime(nodeInfo.event.created_at)}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <NodeInfoContent content={nodeInfo.content} />
-              </CardContent>
-              <CardFooter className="pt-0 flex justify-end">
-                <ViewSourceModal event={nodeInfo.event} />
-              </CardFooter>
-            </Card>
-          )}
-        </section>
-      );
-    }
-
-    // Invalid pubkey - show error
-    return (
-      <section className="grid gap-6">
-        <Card className="border-border bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-foreground">
-              Node Not Found
+              Invalid Lightning Pubkey
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             <p className="mb-2">
-              Could not find a Lightning node with the specified pubkey on {network}.
+              The provided pubkey is not a valid Lightning node public key.
             </p>
             <p className="font-mono text-xs break-all">{pubkey}</p>
           </CardContent>
@@ -198,12 +147,16 @@ export function NodePage() {
     );
   }
 
+  // Loading state - only for valid pubkeys
+  if (isLoading) {
+    return <NodePageSkeleton />;
+  }
+
+  // Render node (from mempool or synthetic)
   return (
     <section className="grid gap-6">
-      {/* Node Banner - combines node info and operator */}
-      <NodeBanner node={node} network={network} operator={operator} />
+      <NodeBanner node={effectiveNode!} network={network} operator={operator} />
 
-      {/* Node Info - only shown if nodeInfo exists */}
       {nodeInfo && (
         <Card className="border-border bg-card">
           <CardHeader>

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -68,13 +68,6 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
     navigate(`/search?q=${encodeURIComponent(query)}&network=${network}`);
   };
 
-  const handleOperatorLookup = () => {
-    setShowResults(false);
-    setHighlightedIndex(-1);
-    setQuery('');
-    navigate(`/lightning/operator/${debouncedQuery}`);
-  };
-
   const handleFocus = () => {
     if (query.length >= 3 && variant === 'header' && !isSearchPageActive) {
       setShowResults(true);
@@ -96,13 +89,25 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
     : 'Search Lightning nodes...';
 
   const showDropdown = variant === 'header' && showResults && query.length >= 3 && !isSearchPageActive;
-  const showOperatorLookup = isValidLightningPubkey(debouncedQuery);
+
+  // For valid Lightning pubkeys with no mempool results, show a synthetic entry
+  const effectiveResults = useMemo(() => {
+    if (results.length === 0 && isValidLightningPubkey(debouncedQuery)) {
+      return [{
+        public_key: debouncedQuery,
+        alias: debouncedQuery,
+        capacity: null as unknown as number,
+        channels: null as unknown as number,
+        status: 1,
+      } as MempoolNode];
+    }
+    return results;
+  }, [results, debouncedQuery]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown) return;
 
-    const totalItems = results.length + (results.length > 0 ? 1 : 0) + (showOperatorLookup ? 1 : 0);
-    // results.length items + "Show all results" button + optional "Search for operator" button
+    const totalItems = effectiveResults.length + (effectiveResults.length > 0 ? 1 : 0);
 
     switch (e.key) {
       case 'ArrowDown':
@@ -119,12 +124,10 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
         break;
       case 'Enter':
         e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-          handleResultClick(results[highlightedIndex]);
-        } else if (highlightedIndex === results.length) {
+        if (highlightedIndex >= 0 && highlightedIndex < effectiveResults.length) {
+          handleResultClick(effectiveResults[highlightedIndex]);
+        } else if (highlightedIndex === effectiveResults.length) {
           handleShowAll();
-        } else if (showOperatorLookup && highlightedIndex === results.length + 1) {
-          handleOperatorLookup();
         }
         break;
       case 'Escape':
@@ -177,13 +180,11 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
       {/* Dropdown Results - only for header variant */}
       {showDropdown && (
         <DropdownResults
-          results={results}
+          results={effectiveResults}
           query={query}
-          debouncedQuery={debouncedQuery}
           isError={isError}
           onResultClick={handleResultClick}
           onShowAll={handleShowAll}
-          onOperatorLookup={showOperatorLookup ? handleOperatorLookup : undefined}
           highlightedIndex={highlightedIndex}
         />
       )}
@@ -194,11 +195,9 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
 interface DropdownResultsProps {
   results: MempoolNode[];
   query: string;
-  debouncedQuery: string;
   isError: boolean;
   onResultClick: (node: MempoolNode) => void;
   onShowAll: () => void;
-  onOperatorLookup?: () => void;
   highlightedIndex: number;
 }
 
@@ -208,7 +207,6 @@ function DropdownResults({
   isError,
   onResultClick,
   onShowAll,
-  onOperatorLookup,
   highlightedIndex,
 }: DropdownResultsProps) {
   if (isError) {
@@ -227,19 +225,6 @@ function DropdownResults({
         <div className="p-4 text-sm text-muted-foreground text-center">
           No nodes found for &apos;{query}&apos;
         </div>
-        {onOperatorLookup && (
-          <div className="border-t border-border px-3 py-2">
-            <button
-              onClick={onOperatorLookup}
-              className={cn(
-                "w-full text-sm text-link hover:underline text-center",
-                highlightedIndex === 0 && "bg-muted"
-              )}
-            >
-              Search for operator with this Lightning pubkey
-            </button>
-          </div>
-        )}
       </Card>
     );
   }

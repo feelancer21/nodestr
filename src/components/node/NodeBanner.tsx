@@ -27,6 +27,7 @@ function truncateLnPub(pubkey: string): string {
   return `${pubkey.slice(0, 12)}...${pubkey.slice(-8)}`;
 }
 
+
 function getNetworkBadgeClasses(network: Network): string {
   switch (network) {
     case 'mainnet':

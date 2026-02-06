@@ -7,7 +7,8 @@ interface QuickSearchItemProps {
   isHighlighted?: boolean;
 }
 
-function formatCapacity(satoshis: number): string {
+function formatCapacity(satoshis: number | null | undefined): string {
+  if (satoshis == null) return '—';
   const btc = satoshis / 100_000_000;
   return btc.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' BTC';
 }

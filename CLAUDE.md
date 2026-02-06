@@ -795,6 +795,23 @@ const displayName = author?.metadata?.name || genUserName(pubkey);
 const displayName = author?.metadata?.name || 'Unknown';
 ```
 
+### Lightning Node Alias Fallback
+
+When displaying a Lightning node without a known alias (e.g., not found via mempool.space), follow the **mempool.space convention**: use the **first 20 characters** of the pubkey as the alias. This matches the Lightning Network standard where nodes without custom aliases are displayed with a truncated pubkey.
+
+```typescript
+// Good - mempool.space convention (first 20 chars of pubkey)
+const alias = pubkeyAlias(pubkey); // "020b7ead41d8cc6d80c6"
+
+// Bad - full 66-char pubkey as alias
+const alias = pubkey; // "020b7ead41d8cc6d80c6f152b67037ee8203e7226a44bae460beeca464d75a773d"
+
+// Bad - custom truncation with "..."
+const alias = pubkey.slice(0, 8) + '...' + pubkey.slice(-8); // "020b7ead...5d75a773d"
+```
+
+CSS `truncate` remains the secondary truncation layer for narrow containers. Never manually insert `...` into alias strings.
+
 ### Avatar Fallback Styling
 
 When using `AvatarFallback` with initials:
