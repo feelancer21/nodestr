@@ -18,3 +18,11 @@ export function isValidLightningPubkey(input: string): boolean {
     return false;
   }
 }
+
+/**
+ * Generates a fallback alias for a Lightning node, matching the mempool.space convention.
+ * Uses the first 20 characters of the pubkey.
+ */
+export function pubkeyAlias(pubkey: string): string {
+  return pubkey.slice(0, 20);
+}

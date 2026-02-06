@@ -8,7 +8,7 @@ import { QuickSearchItem } from './QuickSearchItem';
 import { useSearch, useSearchState } from '@/contexts/SearchContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
-import { isValidLightningPubkey } from '@/lib/lightning';
+import { isValidLightningPubkey, pubkeyAlias } from '@/lib/lightning';
 import type { MempoolNode } from '@/types/search';
 
 interface SearchBannerProps {
@@ -95,7 +95,7 @@ export function SearchBanner({ variant, className, placeholder }: SearchBannerPr
     if (results.length === 0 && isValidLightningPubkey(debouncedQuery)) {
       return [{
         public_key: debouncedQuery,
-        alias: debouncedQuery,
+        alias: pubkeyAlias(debouncedQuery),
         capacity: null as unknown as number,
         channels: null as unknown as number,
         status: 1,

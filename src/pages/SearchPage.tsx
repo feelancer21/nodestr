@@ -10,7 +10,7 @@ import { useSearch, useSearchState } from '@/contexts/SearchContext';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';
-import { isValidLightningPubkey } from '@/lib/lightning';
+import { isValidLightningPubkey, pubkeyAlias } from '@/lib/lightning';
 import type { Network, OperatorInfo, MempoolNode } from '@/types/search';
 
 function SearchResultsSkeleton() {
@@ -202,7 +202,7 @@ export function SearchPage() {
           <SearchResultPair
             node={{
               public_key: debouncedQuery,
-              alias: debouncedQuery,
+              alias: pubkeyAlias(debouncedQuery),
               capacity: 0,
               channels: 0,
               status: 1,

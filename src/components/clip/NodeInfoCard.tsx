@@ -1,13 +1,14 @@
+import { Link } from 'react-router-dom';
 import type { NostrEvent } from '@nostrify/nostrify';
 import type { ClipIdentifier } from '@/lib/clip';
 import { ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader as UICardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardHeader } from './CardHeader';
-import { CopyButton } from './CopyButton';
 import { NodeInfoContent } from './NodeInfoContent';
 import { ViewSourceModal } from './ViewSourceModal';
 import { getNetworkBadgeColor, getMempoolNodeUrl } from '@/lib/utils';
+import { useNodeAlias } from '@/hooks/useNodeAlias';
 
 interface NodeInfoCardProps {
   event: NostrEvent;
@@ -19,8 +20,8 @@ interface NodeInfoCardProps {
 export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCardProps) {
   const network = identifier.network || 'unknown';
   const mempoolUrl = getMempoolNodeUrl(identifier.pubkey, network);
-  const lightningPubkeyShort = `${identifier.pubkey.slice(0, 6)}...${identifier.pubkey.slice(-6)}`;
-  const nodeAlias = identifier.pubkey.slice(0, 20);
+
+  const nodeData = useNodeAlias(identifier.pubkey, network);
 
   const parsedContent = typeof content === 'object' && content !== null ? content : {};
 
@@ -64,9 +65,13 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
         {/* Node identity row */}
         <div className="flex items-center justify-between gap-2 mt-4">
           <div className="flex-1 min-w-0">
-            <p className="text-base font-semibold text-foreground truncate">
-              {nodeAlias}
-            </p>
+            <Link
+              to={`/lightning/${network}/node/${identifier.pubkey}`}
+              className="text-base font-semibold text-foreground hover:underline truncate block"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {nodeData.alias}
+            </Link>
           </div>
           {mempoolUrl ? (
             <a
@@ -91,16 +96,30 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
           )}
         </div>
 
-        {/* Lightning pubkey row */}
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground font-mono">
-            {lightningPubkeyShort}
-          </span>
-          <CopyButton value={identifier.pubkey} />
-        </div>
+        {/* Capacity + Channels */}
+        {(nodeData.capacity != null || nodeData.channels != null) && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-3">
+            {nodeData.capacity != null && (
+              <div>
+                <span className="text-xs text-label">Capacity</span>
+                <p className="text-sm font-medium text-foreground">
+                  {nodeData.capacity.toLocaleString()} sats
+                </p>
+              </div>
+            )}
+            {nodeData.channels != null && (
+              <div>
+                <span className="text-xs text-label">Channels</span>
+                <p className="text-sm font-medium text-foreground">
+                  {nodeData.channels.toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Node Info content */}
-        <div className="mt-4">
+        <div className="border-t border-border mt-4 pt-4">
           <NodeInfoContent content={parsedContent} />
         </div>
 

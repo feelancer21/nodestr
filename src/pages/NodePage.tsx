@@ -8,7 +8,7 @@ import { NodeInfoContent } from '@/components/clip/NodeInfoContent';
 import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { useNodeDetails } from '@/hooks/useNodeDetails';
 import { formatRelativeTime } from '@/lib/utils';
-import { isValidLightningPubkey } from '@/lib/lightning';
+import { isValidLightningPubkey, pubkeyAlias } from '@/lib/lightning';
 import type { Network, MempoolNode } from '@/types/search';
 
 const VALID_NETWORKS = ['mainnet', 'testnet', 'testnet4', 'signet'] as const;
@@ -86,7 +86,7 @@ export function NodePage() {
     if (!isValidPubkey) return undefined;
     return {
       public_key: pubkey!,
-      alias: pubkey!,
+      alias: pubkeyAlias(pubkey!),
       capacity: null as unknown as number,
       channels: null as unknown as number,
       status: 1,

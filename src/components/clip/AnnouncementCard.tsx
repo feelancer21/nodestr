@@ -5,6 +5,7 @@ import type { ClipIdentifier } from '@/lib/clip';
 import { Card, CardContent, CardHeader as UICardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardHeader } from './CardHeader';
+import { CopyButton } from './CopyButton';
 import { ViewSourceModal } from './ViewSourceModal';
 import { AnnouncementModal } from '@/components/node/AnnouncementModal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -52,22 +53,32 @@ export function AnnouncementCard({ event, identifier, onClick }: AnnouncementCar
         </UICardHeader>
 
         <CardContent className="pt-0">
-          <div className="flex items-center justify-between">
-            <Badge variant="secondary">
-              Announcement
-            </Badge>
-            <div className="flex items-center gap-2">
-              {user && (
-                <button
-                  onClick={handleRenewClick}
-                  className="text-muted-foreground hover:text-foreground transition"
-                  title="Renew Announcement"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </button>
-              )}
-              <ViewSourceModal event={event} />
-            </div>
+          <Badge variant="secondary">
+            Announcement
+          </Badge>
+
+          {/* Lightning pubkey row */}
+          <div className="flex items-center gap-1 mt-3">
+            <span className="text-xs text-muted-foreground font-mono">
+              <span className="md:hidden">{identifier.pubkey.slice(0, 12)}...{identifier.pubkey.slice(-8)}</span>
+              <span className="hidden md:inline lg:hidden">{identifier.pubkey.slice(0, 16)}...{identifier.pubkey.slice(-8)}</span>
+              <span className="hidden lg:inline">{identifier.pubkey.slice(0, 20)}...{identifier.pubkey.slice(-8)}</span>
+            </span>
+            <CopyButton value={identifier.pubkey} />
+          </div>
+
+          {/* Actions row */}
+          <div className="flex items-center justify-end gap-2 mt-3">
+            {user && (
+              <button
+                onClick={handleRenewClick}
+                className="text-muted-foreground hover:text-foreground transition"
+                title="Renew Announcement"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <ViewSourceModal event={event} />
           </div>
         </CardContent>
       </Card>
