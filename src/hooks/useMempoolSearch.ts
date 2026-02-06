@@ -3,9 +3,9 @@ import { useMempoolConfig } from './useMempoolConfig';
 import {
   Network,
   MempoolNode,
-  MempoolSearchResponse,
   getSearchEndpoint,
   NETWORKS_WITH_API,
+  mempoolFetch,
 } from '@/lib/mempool';
 
 interface UseMempoolSearchOptions {
@@ -32,13 +32,7 @@ export function useMempoolSearch({
       if (!hasApi) return [];
 
       const url = getSearchEndpoint(baseUrl, network, query);
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Search failed: ${response.status}`);
-      }
-
-      const data: MempoolSearchResponse = await response.json();
+      const data = await mempoolFetch(url);
 
       // Sort by capacity descending
       const sorted = [...data.nodes].sort((a, b) => b.capacity - a.capacity);

@@ -5,7 +5,7 @@ import { useMempoolConfig } from './useMempoolConfig';
 import { useClipAnnouncementLookup } from './useClipAnnouncementLookup';
 import { useAuthor } from './useAuthor';
 import type { Network, MempoolNode, OperatorInfo } from '@/types/search';
-import { getSearchEndpoint, NETWORKS_WITH_API } from '@/lib/mempool';
+import { getSearchEndpoint, NETWORKS_WITH_API, mempoolFetch } from '@/lib/mempool';
 import { CLIP_KIND, CLIP_NODE_INFO, verifyClipEvent } from '@/lib/clip';
 import { isValidLightningPubkey } from '@/lib/lightning';
 
@@ -35,13 +35,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
 
       // Use search endpoint with full pubkey
       const url = getSearchEndpoint(baseUrl, network, pubkey);
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error(`Node lookup failed: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await mempoolFetch(url);
 
       // Find exact match by pubkey
       const exactMatch = data.nodes.find((n: MempoolNode) => n.public_key === pubkey);

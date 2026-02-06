@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMempoolConfig } from './useMempoolConfig';
-import { getSearchEndpoint, NETWORKS_WITH_API } from '@/lib/mempool';
-import type { MempoolNode, MempoolSearchResponse } from '@/lib/mempool';
+import { getSearchEndpoint, NETWORKS_WITH_API, mempoolFetch, Network } from '@/lib/mempool';
+import type { MempoolNode } from '@/lib/mempool';
 import { pubkeyAlias } from '@/lib/lightning';
 
 interface UseNodeAliasResult {
@@ -18,14 +18,8 @@ export function useNodeAlias(pubkey: string, network: string): UseNodeAliasResul
   const query = useQuery({
     queryKey: ['mempool-node-alias', network, pubkey],
     queryFn: async (): Promise<{ alias: string; capacity: number | null; channels: number | null }> => {
-      const url = getSearchEndpoint(baseUrl, network as 'mainnet' | 'testnet' | 'signet', pubkey);
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        return { alias: pubkeyAlias(pubkey), capacity: null, channels: null };
-      }
-
-      const data: MempoolSearchResponse = await response.json();
+      const url = getSearchEndpoint(baseUrl, network as Network, pubkey);
+      const data = await mempoolFetch(url);
       const exactMatch = data.nodes.find((n: MempoolNode) => n.public_key === pubkey);
 
       if (exactMatch) {
