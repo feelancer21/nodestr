@@ -539,6 +539,25 @@ Use `formatRelativeTime()` from `@/lib/utils` for consistent relative time forma
 - `text-sm uppercase tracking-[0.2em]` for headers
 - Direct color values that bypass CSS variables
 
+### Responsive Override Awareness (Tailwind CSS)
+
+shadcn/ui components have responsive base classes (e.g., `CardContent` uses `p-3 pt-0 sm:p-6 sm:pt-0`). Non-responsive utility overrides (e.g., `py-12`) do **NOT** override responsive base classes at `sm:` and above — responsive rules take CSS precedence because they appear later in the generated stylesheet.
+
+**Always match responsive prefixes when overriding component padding/spacing:**
+
+```tsx
+// Bad - py-12 gets overridden by sm:p-6 sm:pt-0 at sm+ breakpoints
+<CardContent className="py-12 text-center">
+
+// Good - explicitly override at each responsive breakpoint
+<CardContent className="py-12 sm:py-12 text-center">
+```
+
+**Components with responsive base padding:**
+- `CardContent`: `p-3 pt-0 sm:p-6 sm:pt-0`
+- `CardHeader`: `p-3 sm:p-6`
+- `CardFooter`: `p-3 pt-0 sm:p-6 sm:pt-0`
+
 ### Theme System
 
 - Light/dark mode with CSS custom properties

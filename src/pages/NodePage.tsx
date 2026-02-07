@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
+import { SquarePen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { NodeBanner } from '@/components/node/NodeBanner';
+import { NodeBanner, NodeInfoModal } from '@/components/node';
 import { NodeInfoContent } from '@/components/clip/NodeInfoContent';
 import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { useNodeDetails } from '@/hooks/useNodeDetails';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { formatRelativeTime } from '@/lib/utils';
 import { isValidLightningPubkey, pubkeyAlias } from '@/lib/lightning';
 import type { Network, MempoolNode } from '@/types/search';
@@ -79,6 +82,9 @@ export function NodePage() {
   const isValidPubkey = isValidLightningPubkey(pubkey || '');
 
   const { node, operator, nodeInfo, isLoading } = useNodeDetails(pubkey || '', network);
+  const { user } = useCurrentUser();
+  const [nodeInfoModalOpen, setNodeInfoModalOpen] = useState(false);
+  const isOperator = !!(user && operator.hasAnnouncement && operator.pubkey && user.pubkey === operator.pubkey);
 
   // Effective node: use mempool data if available, otherwise synthetic for valid pubkeys
   const effectiveNode = useMemo(() => {
@@ -164,12 +170,23 @@ export function NodePage() {
               <CardTitle className="text-base font-semibold text-foreground">
                 Node Info
               </CardTitle>
-              <span
-                className="text-xs text-muted-foreground"
-                title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
-              >
-                {formatRelativeTime(nodeInfo.event.created_at)}
-              </span>
+              <div className="flex items-center gap-2">
+                {isOperator && (
+                  <button
+                    onClick={() => setNodeInfoModalOpen(true)}
+                    className="text-muted-foreground hover:text-foreground transition"
+                    title="Edit Node Info"
+                  >
+                    <SquarePen className="h-4 w-4" />
+                  </button>
+                )}
+                <span
+                  className="text-xs text-muted-foreground"
+                  title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
+                >
+                  {formatRelativeTime(nodeInfo.event.created_at)}
+                </span>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -180,6 +197,27 @@ export function NodePage() {
           </CardFooter>
         </Card>
       )}
+
+      {!nodeInfo && isOperator && (
+        <Card className="border-dashed border-border bg-card">
+          <CardContent className="flex flex-col items-center justify-center py-12 sm:py-12 text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              No Node Info published for this node on {network}.
+            </p>
+            <Button variant="outline" onClick={() => setNodeInfoModalOpen(true)}>
+              Add Node Info
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <NodeInfoModal
+        open={nodeInfoModalOpen}
+        onOpenChange={setNodeInfoModalOpen}
+        lightningPubkey={pubkey!}
+        network={network}
+        existingContent={nodeInfo?.content}
+      />
     </section>
   );
 }
