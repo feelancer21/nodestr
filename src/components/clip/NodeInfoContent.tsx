@@ -3,7 +3,7 @@ import { nip19 } from 'nostr-tools';
 import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { FormattedText } from '@/components/clip/FormattedText';
-import { truncateEnd, truncateMiddle } from '@/lib/utils';
+import { truncateEnd, truncateMiddle, formatNumber } from '@/lib/utils';
 import { useAuthor } from '@/hooks/useAuthor';
 
 function getContactLink(type: string, value: string): { href: string; external: boolean } | null {
@@ -197,7 +197,7 @@ export function NodeInfoContent({ content }: NodeInfoContentProps) {
               <div className="flex flex-col">
                 <span className="text-xs text-label mb-0.5">Minimum</span>
                 <span className="text-sm text-foreground font-mono tabular-nums">
-                  {payload.min_channel_size_sat.toLocaleString()} sat
+                  {formatNumber(payload.min_channel_size_sat)} sat
                 </span>
               </div>
             )}
@@ -205,7 +205,7 @@ export function NodeInfoContent({ content }: NodeInfoContentProps) {
               <div className="flex flex-col">
                 <span className="text-xs text-label mb-0.5">Maximum</span>
                 <span className="text-sm text-foreground font-mono tabular-nums">
-                  {payload.max_channel_size_sat.toLocaleString()} sat
+                  {formatNumber(payload.max_channel_size_sat)} sat
                 </span>
               </div>
             )}

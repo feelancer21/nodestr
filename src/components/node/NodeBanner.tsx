@@ -6,7 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { ViewSourceModal } from '@/components/clip/ViewSourceModal';
 import { AnnouncementModal } from './AnnouncementModal';
-import { cn, formatRelativeTime, pubkeyToColor } from '@/lib/utils';
+import { cn, formatRelativeTime, pubkeyToColor, formatNumber } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useToast } from '@/hooks/useToast';
@@ -20,7 +20,7 @@ interface NodeBannerProps {
 
 function formatCapacitySats(satoshis: number | null | undefined): string {
   if (satoshis == null) return '—';
-  return satoshis.toLocaleString() + ' sats';
+  return formatNumber(satoshis) + ' sats';
 }
 
 function truncateLnPub(pubkey: string): string {
@@ -136,7 +136,7 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
           <div>
             <span className="text-xs text-label">Channels</span>
             <p className="text-sm font-medium text-foreground">
-              {node.channels?.toLocaleString() ?? '—'}
+              {node.channels != null ? formatNumber(node.channels) : '—'}
             </p>
           </div>
           <div className="ml-auto">

@@ -796,6 +796,28 @@ const channels = node.channels ?? 0;
 const capacity = node.capacity.toLocaleString(); // TypeError if null
 ```
 
+### Number Formatting (Locale-Aware)
+
+All numeric values displayed to the user must use the centralized `formatNumber()` utility from `@/lib/utils`. This ensures consistent locale-aware thousands separators across the entire app.
+
+```typescript
+import { formatNumber } from '@/lib/utils';
+
+// Good - uses browser locale consistently
+formatNumber(16777215)              // "16,777,215" (en) or "16.777.215" (de)
+formatNumber(0.5, { maximumFractionDigits: 2 })  // with options
+
+// Bad - inconsistent locale handling
+num.toLocaleString()                // implicit browser locale (OK but not standardized)
+num.toLocaleString('en-US')         // hardcoded locale (WRONG)
+```
+
+**Rules:**
+- Use `formatNumber(value)` for all integer displays (sats, channels, capacity)
+- Use `formatNumber(value, options)` when `Intl.NumberFormatOptions` are needed (e.g., decimal places)
+- Do NOT use `formatNumber` for dates — use `Date.toLocaleString()` directly for dates
+- In form inputs: store raw digits internally, use `formatNumber()` for display formatting. The `stripNonDigits()` pattern handles any locale separator on input.
+
 ### User Display Name Consistency
 
 When displaying user/operator names:

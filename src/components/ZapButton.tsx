@@ -3,6 +3,7 @@ import { useZaps } from '@/hooks/useZaps';
 import { useWallet } from '@/hooks/useWallet';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
+import { formatNumber } from '@/lib/utils';
 import { Zap } from 'lucide-react';
 import type { Event } from 'nostr-tools';
 
@@ -47,7 +48,7 @@ export function ZapButton({
           {showLoading ? (
             '...'
           ) : showCount && totalSats > 0 ? (
-            `${totalSats.toLocaleString()}`
+            `${formatNumber(totalSats)}`
           ) : (
             'Zap'
           )}

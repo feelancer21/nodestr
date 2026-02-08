@@ -107,3 +107,11 @@ export function getNetworkBadgeColor(network: string): string {
       return 'bg-slate-200 dark:bg-slate-500/10 text-slate-700 dark:text-slate-200';
   }
 }
+
+/**
+ * Format a number using the browser's locale.
+ * Centralised to ensure consistent thousands-separator handling across the app.
+ */
+export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return new Intl.NumberFormat(undefined, options).format(value);
+}

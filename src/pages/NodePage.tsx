@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { SquarePen } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NodeBanner, NodeInfoModal } from '@/components/node';
@@ -166,11 +166,19 @@ export function NodePage() {
       {nodeInfo && (
         <Card className="border-border bg-card">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold text-foreground">
-                Node Info
-              </CardTitle>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Node Info
+                </CardTitle>
+                <span
+                  className="text-xs text-muted-foreground"
+                  title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
+                >
+                  {formatRelativeTime(nodeInfo.event.created_at)}
+                </span>
+              </div>
+              <div className="flex items-center justify-end gap-2">
                 {isOperator && (
                   <button
                     onClick={() => setNodeInfoModalOpen(true)}
@@ -180,21 +188,13 @@ export function NodePage() {
                     <SquarePen className="h-4 w-4" />
                   </button>
                 )}
-                <span
-                  className="text-xs text-muted-foreground"
-                  title={new Date(nodeInfo.event.created_at * 1000).toLocaleString()}
-                >
-                  {formatRelativeTime(nodeInfo.event.created_at)}
-                </span>
+                <ViewSourceModal event={nodeInfo.event} />
               </div>
             </div>
           </CardHeader>
           <CardContent>
             <NodeInfoContent content={nodeInfo.content} />
           </CardContent>
-          <CardFooter className="pt-0 flex justify-end">
-            <ViewSourceModal event={nodeInfo.event} />
-          </CardFooter>
         </Card>
       )}
 

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import type { MempoolNode, Network } from '@/types/search';
 import { useSearch } from '@/contexts/SearchContext';
 
@@ -14,7 +14,7 @@ interface NodeCardProps {
 
 function formatCapacitySats(satoshis: number | null | undefined): string {
   if (satoshis == null) return '—';
-  return satoshis.toLocaleString() + ' sats';
+  return formatNumber(satoshis) + ' sats';
 }
 
 function truncatePubkey(pubkey: string): string {

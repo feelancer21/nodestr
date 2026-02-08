@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 import type { MempoolNode } from '@/types/search';
 
 interface QuickSearchItemProps {
@@ -10,7 +10,7 @@ interface QuickSearchItemProps {
 function formatCapacity(satoshis: number | null | undefined): string {
   if (satoshis == null) return '—';
   const btc = satoshis / 100_000_000;
-  return btc.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' BTC';
+  return formatNumber(btc, { maximumFractionDigits: 2 }) + ' BTC';
 }
 
 function truncatePubkey(pubkey: string): string {

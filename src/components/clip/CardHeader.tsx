@@ -10,6 +10,7 @@ interface CardHeaderProps {
   pubkey: string;
   createdAt: number;
   onClick?: () => void;
+  actions?: React.ReactNode;
 }
 
 function getInitials(name: string): string {
@@ -23,7 +24,7 @@ function getInitials(name: string): string {
   return '??';
 }
 
-export function CardHeader({ pubkey, createdAt, onClick }: CardHeaderProps) {
+export function CardHeader({ pubkey, createdAt, onClick, actions }: CardHeaderProps) {
   const author = useAuthor(pubkey);
 
   const displayName = useMemo(() => {
@@ -96,13 +97,20 @@ export function CardHeader({ pubkey, createdAt, onClick }: CardHeaderProps) {
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground font-mono">
-            <span className="md:hidden">{npubMobile}</span>
-            <span className="hidden md:inline lg:hidden">{npubTablet}</span>
-            <span className="hidden lg:inline">{npubDesktop}</span>
-          </span>
-          <CopyButton value={npub} className="shrink-0" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground font-mono">
+              <span className="md:hidden">{npubMobile}</span>
+              <span className="hidden md:inline lg:hidden">{npubTablet}</span>
+              <span className="hidden lg:inline">{npubDesktop}</span>
+            </span>
+            <CopyButton value={npub} className="shrink-0" />
+          </div>
+          {actions && (
+            <div className="flex items-center gap-2">
+              {actions}
+            </div>
+          )}
         </div>
       </div>
     </div>

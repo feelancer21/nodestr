@@ -1,14 +1,17 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { NostrEvent } from '@nostrify/nostrify';
 import type { ClipIdentifier } from '@/lib/clip';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, SquarePen } from 'lucide-react';
 import { Card, CardContent, CardHeader as UICardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CardHeader } from './CardHeader';
 import { NodeInfoContent } from './NodeInfoContent';
 import { ViewSourceModal } from './ViewSourceModal';
-import { getNetworkBadgeColor, getMempoolNodeUrl } from '@/lib/utils';
+import { NodeInfoModal } from '@/components/node/NodeInfoModal';
+import { getNetworkBadgeColor, getMempoolNodeUrl, formatNumber } from '@/lib/utils';
 import { useNodeAlias } from '@/hooks/useNodeAlias';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 interface NodeInfoCardProps {
   event: NostrEvent;
@@ -25,7 +28,12 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
 
   const parsedContent = typeof content === 'object' && content !== null ? content : {};
 
+  const { user } = useCurrentUser();
+  const [nodeInfoModalOpen, setNodeInfoModalOpen] = useState(false);
+  const isOperator = !!(user && user.pubkey === event.pubkey);
+
   return (
+    <>
     <Card
       className={`border-border bg-card text-card-foreground transition overflow-hidden ${
         onClick ? 'cursor-pointer hover:bg-accent/50' : ''
@@ -48,6 +56,20 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
           pubkey={event.pubkey}
           createdAt={event.created_at}
           onClick={onClick}
+          actions={
+            <>
+              {isOperator && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setNodeInfoModalOpen(true); }}
+                  className="text-muted-foreground hover:text-foreground transition"
+                  title="Edit Node Info"
+                >
+                  <SquarePen className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <ViewSourceModal event={event} />
+            </>
+          }
         />
       </UICardHeader>
 
@@ -103,7 +125,7 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
               <div>
                 <span className="text-xs text-label">Capacity</span>
                 <p className="text-sm font-medium text-foreground">
-                  {nodeData.capacity.toLocaleString()} sats
+                  {formatNumber(nodeData.capacity)} sats
                 </p>
               </div>
             )}
@@ -111,7 +133,7 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
               <div>
                 <span className="text-xs text-label">Channels</span>
                 <p className="text-sm font-medium text-foreground">
-                  {nodeData.channels.toLocaleString()}
+                  {formatNumber(nodeData.channels)}
                 </p>
               </div>
             )}
@@ -122,12 +144,16 @@ export function NodeInfoCard({ event, identifier, content, onClick }: NodeInfoCa
         <div className="border-t border-border mt-4 pt-4">
           <NodeInfoContent content={parsedContent} />
         </div>
-
-        {/* View Source - bottom right */}
-        <div className="flex justify-end mt-4">
-          <ViewSourceModal event={event} />
-        </div>
       </CardContent>
     </Card>
+
+    <NodeInfoModal
+      open={nodeInfoModalOpen}
+      onOpenChange={setNodeInfoModalOpen}
+      lightningPubkey={identifier.pubkey}
+      network={(identifier.network as 'mainnet' | 'testnet' | 'testnet4' | 'signet') || 'mainnet'}
+      existingContent={content}
+    />
+    </>
   );
 }

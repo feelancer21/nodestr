@@ -11,7 +11,7 @@ import {
   CollapsibleContent,
 } from '@/components/ui/collapsible';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { cn } from '@/lib/utils';
+import { cn, formatNumber } from '@/lib/utils';
 
 // --- Types ---
 
@@ -111,7 +111,7 @@ function formatSats(raw: string): string {
   if (!raw) return '';
   const num = parseInt(raw, 10);
   if (isNaN(num)) return '';
-  return num.toLocaleString('en-US');
+  return formatNumber(num);
 }
 
 /** Extract only digits from a formatted string */

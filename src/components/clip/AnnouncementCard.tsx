@@ -49,6 +49,20 @@ export function AnnouncementCard({ event, identifier, onClick }: AnnouncementCar
             pubkey={event.pubkey}
             createdAt={event.created_at}
             onClick={onClick}
+            actions={
+              <>
+                {user && (
+                  <button
+                    onClick={handleRenewClick}
+                    className="text-muted-foreground hover:text-foreground transition"
+                    title="Renew Announcement"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <ViewSourceModal event={event} />
+              </>
+            }
           />
         </UICardHeader>
 
@@ -65,20 +79,6 @@ export function AnnouncementCard({ event, identifier, onClick }: AnnouncementCar
               <span className="hidden lg:inline">{identifier.pubkey.slice(0, 20)}...{identifier.pubkey.slice(-8)}</span>
             </span>
             <CopyButton value={identifier.pubkey} />
-          </div>
-
-          {/* Actions row */}
-          <div className="flex items-center justify-end gap-2 mt-3">
-            {user && (
-              <button
-                onClick={handleRenewClick}
-                className="text-muted-foreground hover:text-foreground transition"
-                title="Renew Announcement"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-              </button>
-            )}
-            <ViewSourceModal event={event} />
           </div>
         </CardContent>
       </Card>

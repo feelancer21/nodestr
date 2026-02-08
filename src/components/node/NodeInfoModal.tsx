@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { NodeInfoForm } from './NodeInfoForm';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useToast } from '@/hooks/useToast';
+import { useNodeInfoPublish } from '@/hooks/useNodeInfoPublish';
 import type { Network } from '@/types/search';
 
 interface NodeInfoPayload {
@@ -39,9 +39,10 @@ export function NodeInfoModal({
   existingContent,
 }: NodeInfoModalProps) {
   const { user } = useCurrentUser();
-  const { toast } = useToast();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { publish, isPending, error, reset } = useNodeInfoPublish({
+    lightningPubkey,
+    network,
+  });
 
   // Parse existing content as initial data
   const initialData: NodeInfoPayload | undefined = (() => {
@@ -56,43 +57,23 @@ export function NodeInfoModal({
     }
   })();
 
-  // Reset state when modal closes
-  useEffect(() => {
-    if (!open) {
-      setIsSubmitting(false);
-      setError(undefined);
-    }
-  }, [open]);
-
-  // Handle submit (design phase mock)
+  // Handle submit — mirrors the working AnnouncementModal pattern:
+  // async wrapper with try/catch around mutateAsync
   const handleSubmit = useCallback(
     async (payload: NodeInfoPayload) => {
-      setError(undefined);
-      setIsSubmitting(true);
-
-      // Mock submission for design phase
-      console.log('NodeInfoModal: Mock publish', {
-        lightningPubkey,
-        network,
-        payload,
-      });
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      setIsSubmitting(false);
-
-      // Show success toast
-      toast({
-        title: 'Success',
-        description: 'Node Info published successfully.',
-      });
-
-      // Close modal
-      onOpenChange(false);
+      try {
+        await publish(payload);
+      } catch {
+        // Error is handled by the mutation onError callback
+      }
     },
-    [lightningPubkey, network, onOpenChange, toast]
+    [publish]
   );
+
+  // Reset hook state when modal closes
+  useEffect(() => {
+    if (!open) reset();
+  }, [open, reset]);
 
   // Login guard
   if (!user) {
@@ -122,8 +103,8 @@ export function NodeInfoModal({
           <NodeInfoForm
             initialData={initialData}
             onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            error={error}
+            isSubmitting={isPending}
+            error={error?.message}
           />
         </div>
       </DialogContent>
