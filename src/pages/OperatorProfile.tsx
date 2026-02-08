@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Globe } from 'lucide-react';
+import { Globe, Mail } from 'lucide-react';
 import { useOperatorProfile } from '@/hooks/useOperatorProfile';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useToast } from '@/hooks/useToast';
 import { genUserName } from '@/lib/genUserName';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,8 +23,19 @@ interface OperatorProfileProps {
 export function OperatorProfile({ pubkey }: OperatorProfileProps) {
   const profile = useOperatorProfile(pubkey || '');
   const author = useAuthor(pubkey);
+  const { user } = useCurrentUser();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
   const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
+
+  const handleMailClick = () => {
+    if (!user) {
+      toast({ description: 'Please log in to send messages', duration: 1000 });
+      return;
+    }
+    navigate(`/dms?to=${pubkey}`);
+  };
 
   const pageTitle = useMemo(() => {
     if (author.data?.metadata?.name) {
@@ -103,6 +117,16 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
 
         {/* Content area with overlapping avatar */}
         <div className="relative px-6 sm:px-8 pb-8 pt-4 bg-card">
+          {/* Mail icon - right-aligned */}
+          {pubkey && pubkey !== user?.pubkey && (
+            <button
+              onClick={handleMailClick}
+              className="absolute top-4 right-6 sm:right-8 z-10 text-muted-foreground hover:text-foreground transition"
+              title="Send Message"
+            >
+              <Mail className="h-5 w-5" />
+            </button>
+          )}
           {/* Avatar - positioned to overlap banner */}
           <div className="absolute -top-12 left-6 sm:left-8">
             {author.isLoading ? (
@@ -132,7 +156,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
               <Skeleton className="h-4 w-32" />
             </div>
           ) : (
-            <div className="ml-24">
+            <div className="ml-24 pr-10">
               <h1 className="text-2xl sm:text-3xl font-semibold text-foreground truncate">
                 {displayName}
               </h1>

@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { Home, Menu, MessageCircle, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
+import { nip19 } from 'nostr-tools';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { SearchBanner } from '@/components/search/SearchBanner';
 import { useSearch } from '@/contexts/SearchContext';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
-import { nip19 } from 'nostr-tools';
-import { cn } from '@/lib/utils';
+import { useAuthor } from '@/hooks/useAuthor';
+import { cn, pubkeyToColor } from '@/lib/utils';
+import { genUserName } from '@/lib/genUserName';
+import { DUMMY_TOTAL_UNREAD } from '@/lib/dmDummyData';
 import LoginDialog from '@/components/auth/LoginDialog';
 
 const navItems = [
@@ -20,12 +24,16 @@ const navItems = [
 export function MobileHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { currentUser, removeLogin } = useLoggedInAccounts();
   const { reset: resetSearch } = useSearch();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+
+  // Detect if we're in a DM chat (on /dms with ?to= param)
+  const dmChatPubkey = location.pathname === '/dms' ? searchParams.get('to') : null;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -98,6 +106,10 @@ export function MobileHeader() {
           isVisible ? 'translate-y-0' : '-translate-y-full'
         )}
       >
+        {dmChatPubkey ? (
+          <DMChatHeaderContent pubkey={dmChatPubkey} />
+        ) : (
+        <>
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button
@@ -135,6 +147,11 @@ export function MobileHeader() {
                         <Icon className="h-4 w-4" />
                         {label}
                       </span>
+                      {path === '/dms' && DUMMY_TOTAL_UNREAD > 0 && (
+                        <span className="bg-primary text-primary-foreground rounded-full text-xs min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center font-medium">
+                          {DUMMY_TOTAL_UNREAD}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </nav>
@@ -197,6 +214,8 @@ export function MobileHeader() {
             <Search className="h-5 w-5" />
           </Button>
         </div>
+        </>
+        )}
       </header>
 
       <LoginDialog
@@ -205,5 +224,34 @@ export function MobileHeader() {
         onLogin={() => setLoginOpen(false)}
       />
     </>
+  );
+}
+
+// --- DM Chat Header for Mobile ---
+
+function DMChatHeaderContent({ pubkey }: { pubkey: string }) {
+  const navigate = useNavigate();
+  const author = useAuthor(pubkey);
+  const displayName = author.data?.metadata?.name || genUserName(pubkey);
+  const picture = author.data?.metadata?.picture;
+  const avatarColor = pubkeyToColor(pubkey);
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  return (
+    <button
+      onClick={() => navigate(`/${nip19.npubEncode(pubkey)}`)}
+      className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
+    >
+      <Avatar className="h-8 w-8">
+        <AvatarImage src={picture} alt={displayName} />
+        <AvatarFallback
+          style={{ backgroundColor: avatarColor }}
+          className="text-white font-bold text-xs"
+        >
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+      <span className="font-semibold text-sm truncate">{displayName}</span>
+    </button>
   );
 }

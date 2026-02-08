@@ -1,17 +1,30 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { DMDesignInterface } from '@/components/dm/DMDesignInterface';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function DMsPage() {
+  const { user } = useCurrentUser();
+
+  if (!user) {
+    return (
+      <section className="grid gap-6">
+        <Card className="border-border bg-card">
+          <CardContent className="py-16 sm:py-16 flex flex-col items-center justify-center text-center">
+            <Mail className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="text-sm text-muted-foreground">
+              Please log in to send and receive messages.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
+    );
+  }
+
   return (
-    <section className="grid gap-6">
-      <Card className="border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 text-slate-900 dark:text-slate-100">
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">DMs</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-700 dark:text-slate-200">
-          Operator-only DMs will activate in Phase 9.
-        </CardContent>
-      </Card>
-    </section>
+    <DMDesignInterface
+      className="h-[calc(100vh-7rem)] xl:h-[calc(100vh-4rem)]"
+    />
   );
 }
 

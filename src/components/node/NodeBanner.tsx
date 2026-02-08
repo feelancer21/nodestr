@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ExternalLink, Mail, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -61,6 +62,15 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
   const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
   const { user } = useCurrentUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleMailClick = () => {
+    if (!user) {
+      toast({ description: 'Please log in to send messages', duration: 1000 });
+      return;
+    }
+    navigate(`/dms?to=${operator.pubkey}`);
+  };
 
   const handleClaimClick = () => {
     if (!user) {
@@ -194,6 +204,15 @@ export function NodeBanner({ node, network, operator }: NodeBannerProps) {
                   </span>
                 )}
                 <div className="flex items-center gap-2">
+                  {operator.pubkey && (
+                    <button
+                      onClick={handleMailClick}
+                      className="text-muted-foreground hover:text-foreground transition"
+                      title="Send Message"
+                    >
+                      <Mail className="h-4 w-4" />
+                    </button>
+                  )}
                   {user && (
                     <button
                       onClick={handleClaimClick}
