@@ -142,6 +142,7 @@ For each component from design phase:
 - What changes from static to dynamic
 - Data source (Nostr subscription, local state, etc.)
 - User actions to implement (with expected behavior)
+- Instruct the implementer: All UI/styling decisions made during the design phase take precedence. Before making any changes, compare the design prototype with the actual component. Any improvements requested by the product owner during the design approval process must not be reversed.
 
 **## Data & Nostr Specification**
 - Event kinds to read/write

@@ -94,6 +94,7 @@ On Resume after STOP: Product Owner selects new model. Restart from step 1.
 #### 6. Development Delegation
 - Delegate the implementation to the AI model selected at "Phase A Checkpoint". Confirm the delegation to the product owner by printing the model.
 - Translate the confirmed requirements into a concrete development assignment for the implementing AI.
+- When a prototype is replaced by a real implementation, the implementing model must read the prototype code and adopt all design decisions (styling, layout, responsive behavior).
 - Clearly separate:
   - **What** needs to be built (functional requirements)
   - **How** it should be approached (process, constraints, best practices)

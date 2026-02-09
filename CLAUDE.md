@@ -777,6 +777,7 @@ React portals (`DialogPortal`, `createPortal`) render DOM nodes outside the pare
 - Adding features outside current phase scope
 - **Inventing new typography sizes**: Always use the Typography Hierarchy from Design System section
 - **Creating UI without reference analysis**: Never build new pages/components without first analyzing similar existing components for formatting patterns
+- **Replacing prototypes without preserving design decisions**: When a design prototype is replaced by a real implementation, always read the prototype code first and carry over all UI/styling decisions (spacing, responsive breakpoints, interaction patterns, component sizes). The design phase has authority over functional specs for visual details.
 
 ### External API Data Handling
 
