@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DMConversationList } from '@/components/dm/DMConversationList';
 import { DMChatArea } from '@/components/dm/DMChatArea';
 import { DMStatusInfo } from '@/components/dm/DMStatusInfo';
@@ -18,22 +19,20 @@ interface DMMessagingInterfaceProps {
 }
 
 export const DMMessagingInterface = ({ className }: DMMessagingInterfaceProps) => {
-  const [selectedPubkey, setSelectedPubkey] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedPubkey = searchParams.get('to');
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const isMobile = useIsMobile();
   const { clearCacheAndRefetch } = useDMContext();
+  const [drafts, setDrafts] = useState<Map<string, string>>(() => new Map());
 
   // On mobile, show only one panel at a time
   const showConversationList = !isMobile || !selectedPubkey;
-  const showChatArea = !isMobile || selectedPubkey;
+  const showChatArea = !isMobile || !!selectedPubkey;
 
   const handleSelectConversation = useCallback((pubkey: string) => {
-    setSelectedPubkey(pubkey);
-  }, []);
-
-  const handleBack = useCallback(() => {
-    setSelectedPubkey(null);
-  }, []);
+    setSearchParams({ to: pubkey }, { replace: false });
+  }, [setSearchParams]);
 
   return (
     <>
@@ -50,35 +49,36 @@ export const DMMessagingInterface = ({ className }: DMMessagingInterfaceProps) =
         </DialogContent>
       </Dialog>
 
-      <div className={cn("flex gap-4 overflow-hidden", className)}>
-        {/* Conversation List - Left Sidebar */}
+      <div className={cn('flex gap-4 overflow-hidden', className)}>
+        {/* Conversation List */}
         <div className={cn(
-          "md:w-80 md:flex-shrink-0",
-          isMobile && !showConversationList && "hidden",
-          isMobile && showConversationList && "w-full"
+          'w-80 flex-shrink-0',
+          isMobile && !showConversationList && 'hidden',
+          isMobile && showConversationList && 'w-full'
         )}>
           <DMConversationList
             selectedPubkey={selectedPubkey}
             onSelectConversation={handleSelectConversation}
             className="h-full"
             onStatusClick={() => setStatusModalOpen(true)}
+            drafts={drafts}
           />
         </div>
 
-        {/* Chat Area - Right Panel */}
+        {/* Chat Area */}
         <div className={cn(
-          "flex-1 md:min-w-0",
-          isMobile && !showChatArea && "hidden",
-          isMobile && showChatArea && "w-full"
+          'flex-1 min-w-0',
+          isMobile && !showChatArea && 'hidden',
+          isMobile && selectedPubkey && 'w-full'
         )}>
           <DMChatArea
             pubkey={selectedPubkey}
-            onBack={isMobile ? handleBack : undefined}
+            isMobile={isMobile}
             className="h-full"
+            onDraftsChange={setDrafts}
           />
         </div>
       </div>
     </>
   );
 };
-

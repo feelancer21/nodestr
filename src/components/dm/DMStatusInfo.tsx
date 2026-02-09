@@ -26,7 +26,7 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
 
   const handleClearCache = async () => {
     if (!clearCacheAndRefetch) return;
-    
+
     setIsClearing(true);
     try {
       await clearCacheAndRefetch();
@@ -72,7 +72,7 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
@@ -83,9 +83,9 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
     <div className="space-y-4">
       {/* Loading Phase */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <PhaseIcon className={`h-5 w-5 ${phaseInfo.color} ${loadingPhase !== LOADING_PHASES.READY ? 'animate-pulse' : ''}`} />
+        <CardContent className="pt-4 sm:pt-6">
+          <div className="flex items-center gap-3">
+            <PhaseIcon className={`h-5 w-5 shrink-0 ${phaseInfo.color} ${loadingPhase !== LOADING_PHASES.READY ? 'animate-pulse' : ''}`} />
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium">{phaseInfo.label}</p>
@@ -102,29 +102,18 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
       </Card>
 
       {/* Scan Progress */}
-      {(scanProgress.nip4 !== null || scanProgress.nip17 !== null) && (
+      {scanProgress.nip17 !== null && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6">
             <div className="space-y-3">
               <p className="text-sm font-medium">Scanning Messages</p>
-              {scanProgress.nip4 !== null && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">NIP-4 (Legacy)</span>
-                    <span className="text-muted-foreground">{scanProgress.nip4.current} events</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{scanProgress.nip4.status}</p>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Private Messages</span>
+                  <span className="text-muted-foreground">{scanProgress.nip17.current} events</span>
                 </div>
-              )}
-              {scanProgress.nip17 !== null && (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">NIP-17 (Private)</span>
-                    <span className="text-muted-foreground">{scanProgress.nip17.current} events</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{scanProgress.nip17.status}</p>
-                </div>
-              )}
+                <p className="text-xs text-muted-foreground">{scanProgress.nip17.status}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -132,18 +121,12 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
 
       {/* Subscriptions */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <div className="space-y-3">
             <p className="text-sm font-medium">Real-time Subscriptions</p>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">NIP-4 (Legacy DMs)</span>
-                <Badge variant={subscriptions.isNIP4Connected ? 'default' : 'secondary'}>
-                  {subscriptions.isNIP4Connected ? 'Connected' : 'Disconnected'}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">NIP-17 (Private DMs)</span>
+                <span className="text-sm text-muted-foreground">Private Messages</span>
                 <Badge variant={subscriptions.isNIP17Connected ? 'default' : 'secondary'}>
                   {subscriptions.isNIP17Connected ? 'Connected' : 'Disconnected'}
                 </Badge>
@@ -155,7 +138,7 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
 
       {/* Cache Info */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-4 sm:pt-6">
           <div className="space-y-3">
             <p className="text-sm font-medium">Cache Information</p>
             <div className="space-y-2 text-sm">
@@ -164,11 +147,7 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
                 <span className="font-medium">{conversations.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last NIP-4 sync</span>
-                <span className="font-medium">{formatTimestamp(lastSync.nip4)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Last NIP-17 sync</span>
+                <span className="text-muted-foreground">Last sync</span>
                 <span className="font-medium">{formatTimestamp(lastSync.nip17)}</span>
               </div>
             </div>
@@ -211,4 +190,3 @@ export const DMStatusInfo = ({ clearCacheAndRefetch }: DMStatusInfoProps) => {
     </div>
   );
 };
-

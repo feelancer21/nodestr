@@ -1,6 +1,6 @@
 import { Mail } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { DMDesignInterface } from '@/components/dm/DMDesignInterface';
+import { DMMessagingInterface } from '@/components/dm/DMMessagingInterface';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function DMsPage() {
@@ -22,8 +22,8 @@ export function DMsPage() {
   }
 
   return (
-    <DMDesignInterface
-      className="h-[calc(100vh-7rem)] xl:h-[calc(100vh-4rem)]"
+    <DMMessagingInterface
+      className="h-[calc(100vh-7rem)] xl:h-[calc(100vh-8.5rem)]"
     />
   );
 }

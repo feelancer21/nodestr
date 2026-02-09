@@ -6,7 +6,7 @@ import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
 import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
 import { cn } from '@/lib/utils';
-import { DUMMY_TOTAL_UNREAD } from '@/lib/dmDummyData';
+import { useUnreadSafe } from '@/contexts/UnreadContext';
 import LoginDialog from '@/components/auth/LoginDialog';
 
 const navItems = [
@@ -19,6 +19,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser, removeLogin } = useLoggedInAccounts();
+  const { totalUnread } = useUnreadSafe();
   const [loginOpen, setLoginOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -79,9 +80,9 @@ export function AppSidebar() {
                   <Icon className="h-4 w-4" />
                   {label}
                 </span>
-                {path === '/dms' && DUMMY_TOTAL_UNREAD > 0 && (
+                {path === '/dms' && totalUnread > 0 && (
                   <span className="bg-primary text-primary-foreground rounded-full text-xs min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center font-medium">
-                    {DUMMY_TOTAL_UNREAD}
+                    {totalUnread}
                   </span>
                 )}
               </button>

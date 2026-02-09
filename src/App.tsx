@@ -13,6 +13,8 @@ import { AppProvider } from '@/components/AppProvider';
 import { NWCProvider } from '@/contexts/NWCContext';
 import { SearchProvider } from '@/contexts/SearchContext';
 import { AppConfig } from '@/contexts/AppContext';
+import { DMProvider } from '@/components/DMProvider';
+import { UnreadProvider } from '@/contexts/UnreadContext';
 import AppRouter from './AppRouter';
 
 const head = createHead({
@@ -52,12 +54,16 @@ export function App() {
             <NostrLoginProvider storageKey='nostr:login'>
               <NostrProvider>
                 <NWCProvider>
-                  <TooltipProvider>
-                    <Toaster />
-                    <Suspense>
-                      <AppRouter />
-                    </Suspense>
-                  </TooltipProvider>
+                  <DMProvider config={{ enabled: true }}>
+                    <UnreadProvider>
+                      <TooltipProvider>
+                        <Toaster />
+                        <Suspense>
+                          <AppRouter />
+                        </Suspense>
+                      </TooltipProvider>
+                    </UnreadProvider>
+                  </DMProvider>
                 </NWCProvider>
               </NostrProvider>
             </NostrLoginProvider>

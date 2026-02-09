@@ -12,7 +12,8 @@ import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { useAuthor } from '@/hooks/useAuthor';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
-import { DUMMY_TOTAL_UNREAD } from '@/lib/dmDummyData';
+import { useUnreadSafe } from '@/contexts/UnreadContext';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import LoginDialog from '@/components/auth/LoginDialog';
 
 const navItems = [
@@ -27,13 +28,16 @@ export function MobileHeader() {
   const [searchParams] = useSearchParams();
   const { currentUser, removeLogin } = useLoggedInAccounts();
   const { reset: resetSearch } = useSearch();
+  const { totalUnread } = useUnreadSafe();
+  const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
   // Detect if we're in a DM chat (on /dms with ?to= param)
-  const dmChatPubkey = location.pathname === '/dms' ? searchParams.get('to') : null;
+  // Only show DM chat header on mobile (< 768px) where conversation list is hidden
+  const dmChatPubkey = (isMobile && location.pathname === '/dms') ? searchParams.get('to') : null;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -147,9 +151,9 @@ export function MobileHeader() {
                         <Icon className="h-4 w-4" />
                         {label}
                       </span>
-                      {path === '/dms' && DUMMY_TOTAL_UNREAD > 0 && (
+                      {path === '/dms' && totalUnread > 0 && (
                         <span className="bg-primary text-primary-foreground rounded-full text-xs min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center font-medium">
-                          {DUMMY_TOTAL_UNREAD}
+                          {totalUnread}
                         </span>
                       )}
                     </button>
@@ -239,7 +243,7 @@ function DMChatHeaderContent({ pubkey }: { pubkey: string }) {
 
   return (
     <button
-      onClick={() => navigate(`/${nip19.npubEncode(pubkey)}`)}
+      onClick={() => navigate(`/profile/${nip19.npubEncode(pubkey)}`)}
       className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity"
     >
       <Avatar className="h-8 w-8">

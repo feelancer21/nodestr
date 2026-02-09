@@ -7,8 +7,8 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { validateDMEvent } from '@/lib/dmUtils';
 import { LOADING_PHASES, type LoadingPhase, PROTOCOL_MODE, type ProtocolMode } from '@/lib/dmConstants';
-import { NSecSigner, type NostrEvent } from '@nostrify/nostrify';
-import { generateSecretKey } from 'nostr-tools';
+import { NSecSigner, NPool, type NostrEvent } from '@nostrify/nostrify';
+import { generateSecretKey, getEventHash, verifyEvent } from 'nostr-tools';
 import type { MessageProtocol } from '@/lib/dmConstants';
 import { MESSAGE_PROTOCOL } from '@/lib/dmConstants';
 import { DMContext, DMContextType, FileAttachment } from '@/contexts/DMContext';
@@ -93,6 +93,7 @@ const DM_CONSTANTS = {
   NIP4_QUERY_TIMEOUT: 15000,
   NIP17_QUERY_TIMEOUT: 30000,
   ERROR_LOG_DEBOUNCE_DELAY: 2000,
+  BACKGROUND_SYNC_INTERVAL: 30000, // 30s fallback sync in case subscriptions drop
 } as const;
 
 const SCAN_STATUS_MESSAGES = {
@@ -268,14 +269,15 @@ export function DMProvider({ children, config }: DMProviderProps) {
         throw new Error('NIP-44 encryption not available');
       }
 
-      // Step 1: Create the inner Kind 14 Private Direct Message
+      // Step 1: Create the inner Kind 14/15 Rumor (unsigned, but with computed id)
+      // Per NIP-59: A rumor is a regular nostr event, but is NOT signed.
+      // Per NIP-17: "Fields id and created_at are required."
       const now = Math.floor(Date.now() / 1000);
 
-      // Generate randomized timestamps for gift wraps (NIP-59 metadata privacy)
-      // Randomize within ±2 days in the PAST only (relays reject future timestamps > +30min)
+      // Generate randomized timestamps for seals and gift wraps (NIP-59 metadata privacy)
+      // Randomize within 2 days in the PAST only (relays reject future timestamps)
       const randomizeTimestamp = (baseTime: number) => {
         const twoDaysInSeconds = 2 * 24 * 60 * 60;
-        // Random offset between -2 days and 0 (never future)
         const randomOffset = -Math.floor(Math.random() * twoDaysInSeconds);
         return baseTime + randomOffset;
       };
@@ -292,7 +294,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
       // Use kind 15 for messages with file attachments, kind 14 for text-only
       const messageKind = (attachments && attachments.length > 0) ? 15 : 14;
 
-      const privateMessage: Omit<NostrEvent, 'id' | 'sig'> = {
+      // Create the rumor (unsigned event with computed id)
+      const rumorTemplate = {
         kind: messageKind,
         pubkey: user.pubkey,
         created_at: now,
@@ -300,52 +303,65 @@ export function DMProvider({ children, config }: DMProviderProps) {
         content: messageContent,
       };
 
-      // Step 2: Create TWO Kind 13 Seal events (one for recipient, one for myself)
-      const recipientSeal: Omit<NostrEvent, 'id' | 'sig'> = {
-        kind: 13,
-        pubkey: user.pubkey,
-        created_at: now,
-        tags: [],
-        content: await user.signer.nip44.encrypt(recipientPubkey, JSON.stringify(privateMessage)),
+      // Compute event hash for the rumor id (NIP-01 serialization)
+      const rumorId = getEventHash({
+        ...rumorTemplate,
+        id: '',
+        sig: '',
+      } as NostrEvent);
+
+      const rumor = {
+        ...rumorTemplate,
+        id: rumorId,
       };
 
-      const senderSeal: Omit<NostrEvent, 'id' | 'sig'> = {
+      // Step 2: Create and SIGN TWO Kind 13 Seal events (one for recipient, one for self)
+      // Per NIP-59: "The seal is then signed by the author of the note."
+      // This triggers the NIP-07 browser extension for signing.
+
+      // Encrypt the rumor to the recipient, then sign the seal
+      const recipientSealTemplate = {
         kind: 13,
-        pubkey: user.pubkey,
-        created_at: now,
-        tags: [],
-        content: await user.signer.nip44.encrypt(user.pubkey, JSON.stringify(privateMessage)),
+        created_at: randomizeTimestamp(now),
+        tags: [] as string[][],
+        content: await user.signer.nip44.encrypt(recipientPubkey, JSON.stringify(rumor)),
       };
+      const recipientSeal = await user.signer.signEvent(recipientSealTemplate);
+
+      // Encrypt the rumor to self, then sign the seal
+      const senderSealTemplate = {
+        kind: 13,
+        created_at: randomizeTimestamp(now),
+        tags: [] as string[][],
+        content: await user.signer.nip44.encrypt(user.pubkey, JSON.stringify(rumor)),
+      };
+      const senderSeal = await user.signer.signEvent(senderSealTemplate);
 
       // Step 3: Create TWO Kind 1059 Gift Wrap events
       // Per NIP-17/NIP-59: Gift wraps MUST be signed with random, ephemeral keys
-      // to hide the sender's identity and provide - some - metadata privacy
+      // to hide the sender's identity
 
-      // Generate random secret keys for each gift wrap
       const recipientRandomKey = generateSecretKey();
       const senderRandomKey = generateSecretKey();
 
-      // Create signers with the random keys
       const recipientRandomSigner = new NSecSigner(recipientRandomKey);
       const senderRandomSigner = new NSecSigner(senderRandomKey);
 
-      // Encrypt the seals using the RANDOM signers (so recipient can decrypt with the random pubkey)
-      // The recipient will decrypt using the gift wrap's pubkey (the random ephemeral key)
+      // Encrypt the SIGNED seals into gift wraps using the random ephemeral keys
       const recipientGiftWrapContent = await recipientRandomSigner.nip44!.encrypt(recipientPubkey, JSON.stringify(recipientSeal));
       const senderGiftWrapContent = await senderRandomSigner.nip44!.encrypt(user.pubkey, JSON.stringify(senderSeal));
 
       // Sign both gift wraps with random keys and randomized timestamps
-      // Random keys hide the sender's identity; encryption to recipient allows decryption
       const [recipientGiftWrap, senderGiftWrap] = await Promise.all([
         recipientRandomSigner.signEvent({
           kind: 1059,
-          created_at: randomizeTimestamp(now),  // Randomized to hide real send time
+          created_at: randomizeTimestamp(now),
           tags: [['p', recipientPubkey]],
           content: recipientGiftWrapContent,
         }),
         senderRandomSigner.signEvent({
           kind: 1059,
-          created_at: randomizeTimestamp(now),  // Randomized to hide real send time
+          created_at: randomizeTimestamp(now),
           tags: [['p', user.pubkey]],
           content: senderGiftWrapContent,
         }),
@@ -538,9 +554,14 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
 
     if (protocol === MESSAGE_PROTOCOL.NIP04) {
+      console.log(`[DM] NIP-04 querying relays (since: ${sinceTimestamp ? new Date(sinceTimestamp * 1000).toISOString() : 'beginning'})`);
       const messages = await loadPastNIP4Messages(sinceTimestamp);
 
       if (messages && messages.length > 0) {
+        const fromMe = messages.filter(m => m.pubkey === user?.pubkey).length;
+        const toMe = messages.length - fromMe;
+        console.log(`[DM] NIP-04 loaded: ${messages.length} total (${toMe} received, ${fromMe} sent by me)`);
+
         const newState = new Map();
 
         for (const message of messages) {
@@ -587,7 +608,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
         );
         return { lastMessageTimestamp: newestMessage.created_at, messageCount: messages.length };
       } else {
-        // No new messages, but we still successfully queried relays - update lastSync
+        console.log('[DM] NIP-04 loaded: 0 messages (no new messages found)');
         const currentTime = Math.floor(Date.now() / 1000);
         setLastSync(prev => ({ ...prev, nip4: currentTime }));
         return { lastMessageTimestamp: sinceTimestamp, messageCount: 0 };
@@ -751,12 +772,13 @@ export function DMProvider({ children, config }: DMProviderProps) {
         // For NIP-17 messages with originalGiftWrapId, dedupe by gift wrap ID
         // For NIP-04 and cached NIP-17 messages, dedupe by message ID
         const messageId = message.originalGiftWrapId || message.id;
-        if (existing.messages.some(msg => (msg.originalGiftWrapId || msg.id) === messageId)) {
+        if (messageId && existing.messages.some(msg => (msg.originalGiftWrapId || msg.id) === messageId)) {
           return prev;
         }
 
+        // Match optimistic messages: either still sending OR already resolved (id starts with 'optimistic-')
         const optimisticIndex = existing.messages.findIndex(msg =>
-          msg.isSending &&
+          (msg.isSending || (msg.id && msg.id.startsWith('optimistic-'))) &&
           msg.pubkey === message.pubkey &&
           msg.decryptedContent === message.decryptedContent &&
           Math.abs(msg.created_at - message.created_at) <= 30
@@ -853,7 +875,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       const sealEvent = JSON.parse(sealContent) as NostrEvent;
 
       if (sealEvent.kind !== 13) {
-        console.log(`[DM] ⚠️ NIP-17 INVALID SEAL - expected kind 13, got ${sealEvent.kind}`, {
+        console.warn(`[DM] ⚠️ NIP-17 INVALID SEAL - expected kind 13, got ${sealEvent.kind}`, {
           giftWrapId: event.id,
           sealKind: sealEvent.kind,
         });
@@ -865,7 +887,45 @@ export function DMProvider({ children, config }: DMProviderProps) {
             error: `Invalid Seal format - expected kind 13, got ${sealEvent.kind}`,
           },
           conversationPartner: event.pubkey,
-          sealEvent: event, // Return the gift wrap as fallback
+          sealEvent: event,
+        };
+      }
+
+      // Verify seal signature (NIP-59: seal MUST be signed by the sender)
+      if (!sealEvent.sig || !sealEvent.id) {
+        console.warn('[DM] ⚠️ NIP-17 seal missing signature or id', {
+          giftWrapId: event.id,
+          hasSig: !!sealEvent.sig,
+          hasId: !!sealEvent.id,
+          sealPubkey: sealEvent.pubkey,
+        });
+        return {
+          processedMessage: {
+            ...event,
+            content: '',
+            decryptedContent: '',
+            error: 'Seal has no signature — message cannot be authenticated',
+          },
+          conversationPartner: event.pubkey,
+          sealEvent,
+        };
+      }
+
+      if (!verifyEvent(sealEvent)) {
+        console.warn('[DM] ⚠️ NIP-17 seal signature verification FAILED', {
+          giftWrapId: event.id,
+          sealId: sealEvent.id,
+          sealPubkey: sealEvent.pubkey,
+        });
+        return {
+          processedMessage: {
+            ...event,
+            content: '',
+            decryptedContent: '',
+            error: 'Seal signature verification failed — message rejected',
+          },
+          conversationPartner: event.pubkey,
+          sealEvent,
         };
       }
 
@@ -874,12 +934,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
       // Accept both kind 14 (text) and kind 15 (files/attachments)
       if (messageEvent.kind !== 14 && messageEvent.kind !== 15) {
-        console.log(`[DM] ⚠️ NIP-17 MESSAGE WITH UNSUPPORTED INNER EVENT KIND:`, {
+        console.warn(`[DM] ⚠️ NIP-17 unsupported inner event kind:`, {
           giftWrapId: event.id,
           innerKind: messageEvent.kind,
           expectedKinds: [14, 15],
           sealPubkey: sealEvent.pubkey,
-          messageEvent: messageEvent,
         });
         return {
           processedMessage: {
@@ -889,7 +948,26 @@ export function DMProvider({ children, config }: DMProviderProps) {
             error: `Invalid message format - expected kind 14 or 15, got ${messageEvent.kind}`,
           },
           conversationPartner: event.pubkey,
-          sealEvent, // Return the seal
+          sealEvent,
+        };
+      }
+
+      // NIP-17: "Clients MUST verify if pubkey of the kind:13 is the same pubkey on the kind:14"
+      if (messageEvent.pubkey && messageEvent.pubkey !== sealEvent.pubkey) {
+        console.warn('[DM] ⚠️ NIP-17 pubkey mismatch: seal vs inner message (impersonation attempt?)', {
+          giftWrapId: event.id,
+          sealPubkey: sealEvent.pubkey,
+          innerPubkey: messageEvent.pubkey,
+        });
+        return {
+          processedMessage: {
+            ...event,
+            content: '',
+            decryptedContent: '',
+            error: 'Pubkey mismatch between seal and inner message — possible impersonation',
+          },
+          conversationPartner: event.pubkey,
+          sealEvent,
         };
       }
 
@@ -905,7 +983,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
               error: 'Invalid recipient - malformed p tag',
             },
             conversationPartner: event.pubkey,
-            sealEvent, // Return the seal
+            sealEvent,
           };
         } else {
           conversationPartner = recipient;
@@ -917,11 +995,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
       return {
         processedMessage: {
           ...messageEvent,
-          id: messageEvent.id || `missing-nip17-inner-${messageEvent.created_at}-${messageEvent.pubkey.substring(0, 8)}-${messageEvent.content.substring(0, 16)}`,
+          id: messageEvent.id || getEventHash({ ...messageEvent, id: '', sig: '' } as NostrEvent),
           decryptedContent: messageEvent.content, // Plaintext from inner message
         },
         conversationPartner,
-        sealEvent, // Return the seal (kind 13) for storage
+        sealEvent, // Return the verified seal (kind 13) for storage
       };
     } catch (error) {
       console.error('[DM] Failed to process NIP-17 gift wrap:', {
@@ -989,6 +1067,55 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
   }, [user, processNIP17GiftWrap, addMessageToState]);
 
+  // Helper: get read relay URLs from app config
+  const getReadRelayUrls = useCallback(() => {
+    return appConfig.relayMetadata.relays
+      .filter(r => r.read)
+      .map(r => r.url);
+  }, [appConfig.relayMetadata]);
+
+  // Helper: subscribe to individual relays using NRelay1.req() which stays open after EOSE
+  // NPool.req() aborts after eoseTimeout (1s), so we must use relay-level subscriptions
+  const subscribeToRelays = useCallback((
+    filters: import('@nostrify/nostrify').NostrFilter[],
+    onEvent: (event: NostrEvent) => Promise<void>,
+    label: string,
+  ): { close: () => void } => {
+    const pool = nostr as NPool;
+    const relayUrls = getReadRelayUrls();
+    let isActive = true;
+
+    console.log(`[DM] Starting ${label} subscription on ${relayUrls.length} relays`);
+
+    for (const url of relayUrls) {
+      const relay = pool.relay(url);
+      (async () => {
+        try {
+          for await (const msg of relay.req(filters)) {
+            if (!isActive) break;
+            if (msg[0] === 'EVENT') {
+              console.log(`[DM] ${label} event from ${url}:`, msg[2].id?.slice(0, 8));
+              await onEvent(msg[2]);
+            } else if (msg[0] === 'EOSE') {
+              console.log(`[DM] ${label} EOSE from ${url}`);
+            }
+          }
+          if (isActive) {
+            console.warn(`[DM] ${label} subscription on ${url} ended`);
+          }
+        } catch (error) {
+          if (isActive) {
+            console.error(`[DM] ${label} subscription error on ${url}:`, error);
+          }
+        }
+      })();
+    }
+
+    return {
+      close: () => { isActive = false; },
+    };
+  }, [nostr, getReadRelayUrls]);
+
   // Start NIP-4 subscription
   const startNIP4Subscription = useCallback(async (sinceTimestamp?: number) => {
     if (!user?.pubkey || !nostr) return;
@@ -1008,36 +1135,21 @@ export function DMProvider({ children, config }: DMProviderProps) {
         { kinds: [4], authors: [user.pubkey], since: subscriptionSince }
       ];
 
-      const subscription = nostr.req(filters);
-      let isActive = true;
-
-      (async () => {
-        try {
-          for await (const msg of subscription) {
-            if (!isActive) break;
-            if (msg[0] === 'EVENT') {
-              await processIncomingNIP4Message(msg[2]);
-            }
-          }
-        } catch (error) {
-          if (isActive) {
-            console.error('[DM] NIP-4 subscription error:', error);
-          }
-        }
-      })();
-
-      nip4SubscriptionRef.current = {
-        close: () => {
-          isActive = false;
-        }
-      };
+      nip4SubscriptionRef.current = subscribeToRelays(
+        filters,
+        async (event) => {
+          await processIncomingNIP4Message(event);
+          setLastSync(prev => ({ ...prev, nip4: Math.floor(Date.now() / 1000) }));
+        },
+        'NIP-4',
+      );
 
       setSubscriptions(prev => ({ ...prev, isNIP4Connected: true }));
     } catch (error) {
       console.error('[DM] Failed to start NIP-4 subscription:', error);
       setSubscriptions(prev => ({ ...prev, isNIP4Connected: false }));
     }
-  }, [user, nostr, lastSync.nip4, processIncomingNIP4Message]);
+  }, [user, nostr, lastSync.nip4, processIncomingNIP4Message, subscribeToRelays]);
 
   // Start NIP-17 subscription
   const startNIP17Subscription = useCallback(async (sinceTimestamp?: number) => {
@@ -1054,7 +1166,6 @@ export function DMProvider({ children, config }: DMProviderProps) {
       }
 
       // Adjust for NIP-17 timestamp fuzzing (±2 days)
-      // Subscribe from (lastSync - 2 days) to catch messages with randomized past timestamps
       const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
       subscriptionSince = subscriptionSince - TWO_DAYS_IN_SECONDS;
 
@@ -1064,36 +1175,21 @@ export function DMProvider({ children, config }: DMProviderProps) {
         since: subscriptionSince,
       }];
 
-      const subscription = nostr.req(filters);
-      let isActive = true;
-
-      (async () => {
-        try {
-          for await (const msg of subscription) {
-            if (!isActive) break;
-            if (msg[0] === 'EVENT') {
-              await processIncomingNIP17Message(msg[2]);
-            }
-          }
-        } catch (error) {
-          if (isActive) {
-            console.error('[DM] NIP-17 subscription error:', error);
-          }
-        }
-      })();
-
-      nip17SubscriptionRef.current = {
-        close: () => {
-          isActive = false;
-        }
-      };
+      nip17SubscriptionRef.current = subscribeToRelays(
+        filters,
+        async (event) => {
+          await processIncomingNIP17Message(event);
+          setLastSync(prev => ({ ...prev, nip17: Math.floor(Date.now() / 1000) }));
+        },
+        'NIP-17',
+      );
 
       setSubscriptions(prev => ({ ...prev, isNIP17Connected: true }));
     } catch (error) {
       console.error('[DM] Failed to start NIP-17 subscription:', error);
       setSubscriptions(prev => ({ ...prev, isNIP17Connected: false }));
     }
-  }, [user, nostr, lastSync.nip17, enableNIP17, processIncomingNIP17Message]);
+  }, [user, nostr, lastSync.nip17, enableNIP17, processIncomingNIP17Message, subscribeToRelays]);
 
   // Load all cached messages at once (both protocols)
   const loadAllCachedMessages = useCallback(async (): Promise<{ nip4Since?: number; nip17Since?: number }> => {
@@ -1354,6 +1450,58 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
   }, [enabled, userPubkey, clearCacheAndRefetch]);
 
+  // Background sync fallback: lightweight periodic query for new messages
+  // in case real-time subscriptions silently drop
+  const lastSyncRef = useRef(lastSync);
+  lastSyncRef.current = lastSync;
+
+  useEffect(() => {
+    if (!enabled || !userPubkey || !nostr || !hasInitialLoadCompleted) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
+        const now = Math.floor(Date.now() / 1000);
+        const currentLastSync = lastSyncRef.current;
+
+        // NIP-17: query for new gift wraps
+        if (enableNIP17) {
+          const nip17Since = (currentLastSync.nip17 || now) - TWO_DAYS_IN_SECONDS;
+          const events = await nostr.query(
+            [{ kinds: [1059], '#p': [userPubkey], since: nip17Since }],
+            { signal: AbortSignal.timeout(10000) }
+          );
+          for (const event of events) {
+            await processIncomingNIP17Message(event);
+          }
+          if (events.length > 0) {
+            setLastSync(prev => ({ ...prev, nip17: now }));
+          }
+        }
+
+        // NIP-4: query for new DMs
+        const nip4Since = (currentLastSync.nip4 || now) - DM_CONSTANTS.SUBSCRIPTION_OVERLAP_SECONDS;
+        const nip4Events = await nostr.query(
+          [
+            { kinds: [4], '#p': [userPubkey], since: nip4Since },
+            { kinds: [4], authors: [userPubkey], since: nip4Since },
+          ],
+          { signal: AbortSignal.timeout(10000) }
+        );
+        for (const event of nip4Events) {
+          await processIncomingNIP4Message(event);
+        }
+        if (nip4Events.length > 0) {
+          setLastSync(prev => ({ ...prev, nip4: now }));
+        }
+      } catch {
+        // Silently ignore background sync errors
+      }
+    }, DM_CONSTANTS.BACKGROUND_SYNC_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [enabled, userPubkey, nostr, hasInitialLoadCompleted, enableNIP17, processIncomingNIP17Message, processIncomingNIP4Message]);
+
   // Conversations summary
   const conversations = useMemo(() => {
     const conversationsList: ConversationSummary[] = [];
@@ -1469,13 +1617,13 @@ export function DMProvider({ children, config }: DMProviderProps) {
   }) => {
     if (!enabled) return;
 
-    const { recipientPubkey, content, protocol = MESSAGE_PROTOCOL.NIP04, attachments } = params;
+    const { recipientPubkey, content, protocol = MESSAGE_PROTOCOL.NIP17, attachments } = params;
     if (!userPubkey) return;
 
     const optimisticId = `optimistic-${Date.now()}-${Math.random()}`;
     const optimisticMessage: DecryptedMessage = {
       id: optimisticId,
-      kind: protocol === MESSAGE_PROTOCOL.NIP04 ? 4 : 14, // Use kind 14 for NIP-17 (the real message kind)
+      kind: protocol === MESSAGE_PROTOCOL.NIP04 ? 4 : 13, // Use kind 13 for NIP-17 (seal kind, matches protocol detection)
       pubkey: userPubkey,
       created_at: Math.floor(Date.now() / 1000), // Real timestamp
       tags: [['p', recipientPubkey]],
@@ -1484,6 +1632,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       sig: '',
       isSending: true,
       clientFirstSeen: Date.now(),
+      ...(protocol === MESSAGE_PROTOCOL.NIP17 && { originalGiftWrapId: `optimistic-gw-${Date.now()}` }),
     };
 
     addMessageToState(optimisticMessage, recipientPubkey, protocol === MESSAGE_PROTOCOL.NIP04 ? MESSAGE_PROTOCOL.NIP04 : MESSAGE_PROTOCOL.NIP17);
@@ -1494,10 +1643,26 @@ export function DMProvider({ children, config }: DMProviderProps) {
       } else if (protocol === MESSAGE_PROTOCOL.NIP17) {
         await sendNIP17Message.mutateAsync({ recipientPubkey, content, attachments });
       }
+      // Resolve optimistic message: clear isSending flag after successful publish.
+      // The self-copy gift wrap may not come back through the subscription
+      // (timestamp fuzzing can place it before the since filter).
+      setMessages(prev => {
+        const newMap = new Map(prev);
+        const existing = newMap.get(recipientPubkey);
+        if (existing) {
+          newMap.set(recipientPubkey, {
+            ...existing,
+            messages: existing.messages.map(msg =>
+              msg.id === optimisticId ? { ...msg, isSending: false } : msg
+            ),
+          });
+        }
+        return newMap;
+      });
     } catch (error) {
       console.error(`[DM] Failed to send ${protocol} message:`, error);
     }
-  }, [enabled, userPubkey, addMessageToState, sendNIP4Message, sendNIP17Message]);
+  }, [enabled, userPubkey, addMessageToState, sendNIP4Message, sendNIP17Message, setMessages]);
 
   const isDoingInitialLoad = isLoading && (loadingPhase === LOADING_PHASES.CACHE || loadingPhase === LOADING_PHASES.RELAYS);
 
