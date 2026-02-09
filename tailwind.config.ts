@@ -64,6 +64,10 @@ export default {
 				},
 				label: 'hsl(var(--label))',
 				link: 'hsl(var(--link))',
+				'dm-own': {
+					DEFAULT: 'hsl(var(--dm-own-bg))',
+					foreground: 'hsl(var(--dm-own-fg))',
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

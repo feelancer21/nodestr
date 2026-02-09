@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, memo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useConversationMessages } from '@/hooks/useConversationMessages';
@@ -14,7 +14,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MessageCircle, Send, Loader2, ShieldCheck, Lock } from 'lucide-react';
+import { MessageCircle, Send, Loader2, ShieldCheck, Lock, Copy, Check, Reply, X } from 'lucide-react';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { NoteContent } from '@/components/NoteContent';
 import { MessageContent } from '@/components/dm/MessageContent';
@@ -29,11 +29,74 @@ interface DMChatAreaProps {
   onDraftsChange?: (drafts: Map<string, string>) => void;
 }
 
+interface ReplyTo {
+  content: string;
+  pubkey: string;
+  messageId: string;
+}
+
+// --- Clipboard utility (with fallback for non-HTTPS) ---
+
+async function copyText(text: string, containerElement: HTMLElement): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch { /* fall through */ }
+  }
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+  textArea.setAttribute('readonly', '');
+  textArea.setAttribute('tabindex', '-1');
+  textArea.setAttribute('aria-hidden', 'true');
+  containerElement.appendChild(textArea);
+  textArea.focus({ preventScroll: true });
+  textArea.select();
+  let success = false;
+  try { success = document.execCommand('copy'); } catch { success = false; }
+  containerElement.removeChild(textArea);
+  return success;
+}
+
+// --- Message Copy Button (adapts to own vs received bubble colors) ---
+
+function MessageCopyButton({ value, isFromMe }: { value: string; isFromMe: boolean }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const success = await copyText(value, e.currentTarget);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={cn(
+        'inline-flex items-center transition',
+        isFromMe
+          ? 'text-dm-own-foreground opacity-50 hover:opacity-100'
+          : 'text-muted-foreground opacity-50 hover:opacity-100'
+      )}
+      title={copied ? 'Copied!' : 'Copy message'}
+    >
+      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
 // --- Message Bubble ---
 
 const MessageBubble = memo(({
   message,
   isFromCurrentUser,
+  onReply,
+  onQuoteClick,
 }: {
   message: {
     id: string;
@@ -50,6 +113,8 @@ const MessageBubble = memo(({
     isSending?: boolean;
   };
   isFromCurrentUser: boolean;
+  onReply?: (data: ReplyTo) => void;
+  onQuoteClick?: (quotedText: string) => void;
 }) => {
   const actualKind = message.decryptedEvent?.kind || message.kind;
   const isFileAttachment = actualKind === 15;
@@ -65,10 +130,13 @@ const MessageBubble = memo(({
   };
 
   return (
-    <div className={cn('flex mb-3 sm:mb-4', isFromCurrentUser ? 'justify-end' : 'justify-start')}>
+    <div
+      id={`msg-${message.id}`}
+      className={cn('flex mb-3 sm:mb-4 transition-colors duration-700', isFromCurrentUser ? 'justify-end' : 'justify-start')}
+    >
       <div className={cn(
-        'max-w-[85%] sm:max-w-[70%] rounded-lg px-3 py-2 sm:px-4',
-        isFromCurrentUser ? 'bg-blue-500 text-white' : 'bg-muted'
+        'max-w-[95%] sm:max-w-[95%] rounded-lg px-3 py-2 sm:px-4',
+        isFromCurrentUser ? 'bg-dm-own text-dm-own-foreground' : 'bg-muted'
       )}>
         {message.error ? (
           <Tooltip delayDuration={200}>
@@ -87,18 +155,40 @@ const MessageBubble = memo(({
           <MessageContent
             content={message.decryptedContent || ''}
             isFromMe={isFromCurrentUser}
+            onQuoteClick={onQuoteClick}
           />
         )}
         <div className="flex items-center gap-2 mt-1">
           <span
             className={cn(
               'text-xs opacity-70',
-              isFromCurrentUser ? 'text-white' : 'text-muted-foreground'
+              isFromCurrentUser ? 'text-dm-own-foreground' : 'text-muted-foreground'
             )}
             title={formatFullDateTime(message.created_at)}
           >
             {formatConversationTime(message.created_at)}
           </span>
+          {/* Copy message button */}
+          {!message.isSending && !message.error && message.decryptedContent && (
+            <MessageCopyButton
+              value={message.decryptedContent}
+              isFromMe={isFromCurrentUser}
+            />
+          )}
+          {/* Reply button (received messages only) */}
+          {!isFromCurrentUser && !message.isSending && !message.error && message.decryptedContent && (
+            <button
+              onClick={() => onReply?.({
+                content: message.decryptedContent!,
+                pubkey: message.pubkey,
+                messageId: message.id,
+              })}
+              className="inline-flex items-center transition text-muted-foreground opacity-50 hover:opacity-100"
+              title="Reply"
+            >
+              <Reply className="h-3 w-3" />
+            </button>
+          )}
           {message.isSending ? (
             <Loader2 className="h-3 w-3 animate-spin opacity-70" />
           ) : (
@@ -212,30 +302,36 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
   const [isSending, setIsSending] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sendProtocol, setSendProtocol] = useState<MessageProtocol>(MESSAGE_PROTOCOL.NIP17);
+  const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
 
   // Per-conversation draft storage
   const draftsRef = useRef<Map<string, string>>(new Map());
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+
+  // Helper: get the Radix ScrollArea viewport element
+  const getViewport = useCallback(() => {
+    return scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+  }, []);
 
   // Notify parent of draft changes (for conversation list "Draft:" preview)
   const notifyDraftsChange = useCallback(() => {
     onDraftsChange?.(new Map(draftsRef.current));
   }, [onDraftsChange]);
 
-  // Restore draft when switching conversations
+  // Restore draft when switching conversations; clear reply state
   useEffect(() => {
     if (!pubkey) return;
     const draft = draftsRef.current.get(pubkey) || '';
     setMessageText(draft);
+    setReplyTo(null);
     notifyDraftsChange();
   }, [pubkey, notifyDraftsChange]);
 
-  // Track scroll position to determine if user is near the bottom
+  // Track scroll position to know if user is near the bottom
   useEffect(() => {
-    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    const viewport = getViewport();
     if (!viewport) return;
 
     const handleScroll = () => {
@@ -245,32 +341,93 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
 
     viewport.addEventListener('scroll', handleScroll);
     return () => viewport.removeEventListener('scroll', handleScroll);
-  }, [pubkey]);
+  }, [pubkey, getViewport]);
+
+  // PRIMARY auto-scroll: useLayoutEffect fires synchronously after React commits DOM changes
+  // but BEFORE the browser paints or fires scroll events — so isNearBottomRef is still accurate.
+  useLayoutEffect(() => {
+    if (!isNearBottomRef.current) return;
+    const viewport = getViewport();
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+  }, [messages, getViewport]);
 
   // Always scroll to bottom on conversation switch
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!pubkey) return;
     isNearBottomRef.current = true;
-    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-  }, [pubkey]);
+    const viewport = getViewport();
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+  }, [pubkey, getViewport]);
 
-  // Auto-scroll on new messages only if user is near the bottom
+  // BACKUP: ResizeObserver for async content changes (e.g. images loading after render)
   useEffect(() => {
-    if (isNearBottomRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages.length]);
+    const viewport = getViewport();
+    if (!viewport) return;
+    const content = viewport.firstElementChild as HTMLElement | null;
+    if (!content) return;
+
+    let prevScrollHeight = viewport.scrollHeight;
+    const resizeObserver = new ResizeObserver(() => {
+      const newScrollHeight = viewport.scrollHeight;
+      if (newScrollHeight === prevScrollHeight) return;
+      if (isNearBottomRef.current) {
+        viewport.scrollTop = newScrollHeight;
+      }
+      prevScrollHeight = newScrollHeight;
+    });
+
+    resizeObserver.observe(content);
+    return () => resizeObserver.disconnect();
+  }, [pubkey, getViewport]);
+
+  // Mark conversation as read when opening (with delay to avoid transient URL states)
+  useEffect(() => {
+    if (!pubkey) return;
+
+    const timer = setTimeout(() => {
+      markAsRead(pubkey);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [pubkey, markAsRead]);
+
+  // Scroll to a specific message by ID (for reply preview link)
+  const scrollToMessage = useCallback((messageId: string) => {
+    const element = document.getElementById(`msg-${messageId}`);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Brief highlight flash
+    element.style.backgroundColor = 'hsl(var(--primary) / 0.1)';
+    setTimeout(() => { element.style.backgroundColor = ''; }, 1500);
+  }, []);
+
+  // Find the original message by matching its content against the quoted text, then scroll to it
+  const findAndScrollToOriginal = useCallback((quotedText: string) => {
+    if (!quotedText) return;
+    const match = messages.find(m =>
+      m.decryptedContent && m.decryptedContent.startsWith(quotedText.slice(0, 80))
+    );
+    if (match) scrollToMessage(match.id);
+  }, [messages, scrollToMessage]);
 
   const handleSend = useCallback(async () => {
     if (!messageText.trim() || !pubkey || !user) return;
+
+    // Prepend blockquote if replying (max 2 lines of the original)
+    const replyPrefix = replyTo
+      ? `> ${replyTo.content.split('\n').slice(0, 2).join('\n> ')}\n\n`
+      : '';
+    const fullMessage = replyPrefix + messageText.trim();
 
     setIsSending(true);
     try {
       await sendMessage({
         recipientPubkey: pubkey,
-        content: messageText.trim(),
+        content: fullMessage,
         protocol: sendProtocol,
       });
       setMessageText('');
+      setReplyTo(null);
       draftsRef.current.delete(pubkey);
       notifyDraftsChange();
       // Auto-mark conversation as read after sending
@@ -280,7 +437,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     } finally {
       setIsSending(false);
     }
-  }, [messageText, pubkey, user, sendMessage, sendProtocol, markAsRead, notifyDraftsChange]);
+  }, [messageText, pubkey, user, sendMessage, sendProtocol, replyTo, markAsRead, notifyDraftsChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // Mobile: Enter always creates new line (send via button)
@@ -313,6 +470,10 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     }, 0);
   }, [loadEarlierMessages, isLoadingMore]);
 
+  const handleReply = useCallback((data: ReplyTo) => {
+    setReplyTo(data);
+  }, []);
+
   // No conversation selected — show empty state
   if (!pubkey) {
     return (
@@ -339,6 +500,11 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
       </Card>
     );
   }
+
+  // Truncate reply preview to ~2 lines worth of text
+  const replyPreviewText = replyTo
+    ? replyTo.content.split('\n').slice(0, 2).join('\n').slice(0, 200)
+    : '';
 
   return (
     <Card className={cn(
@@ -386,16 +552,41 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
                   key={message.originalGiftWrapId || message.id}
                   message={message}
                   isFromCurrentUser={message.pubkey === user.pubkey}
+                  onReply={handleReply}
+                  onQuoteClick={findAndScrollToOriginal}
                 />
               ))}
             </>
           )}
-          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="px-3 sm:px-4 pt-2 border-t border-border shrink-0">
+          <div className="flex items-start gap-2 bg-muted/50 rounded p-2">
+            <div className="border-l-2 border-primary pl-2 flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground line-clamp-2">{replyPreviewText}</p>
+              <button
+                onClick={() => scrollToMessage(replyTo.messageId)}
+                className="text-xs text-link hover:underline mt-0.5"
+              >
+                Show in chat
+              </button>
+            </div>
+            <button
+              onClick={() => setReplyTo(null)}
+              className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              title="Cancel reply"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Message Input */}
-      <div className="px-3 py-2 sm:p-4 border-t border-border shrink-0">
+      <div className={cn('px-3 py-2 sm:p-4 shrink-0', !replyTo && 'border-t border-border')}>
         <div className="flex gap-2 items-end">
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>

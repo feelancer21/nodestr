@@ -797,6 +797,41 @@ const channels = node.channels ?? 0;
 const capacity = node.capacity.toLocaleString(); // TypeError if null
 ```
 
+### Clipboard API (Requires Fallback)
+
+`navigator.clipboard.writeText()` only works in **secure contexts** (HTTPS or localhost). The development/testing environment may use plain HTTP, so every copy-to-clipboard implementation **must** include a `document.execCommand('copy')` fallback using a temporary textarea.
+
+**Reference implementation**: `src/components/clip/CopyButton.tsx` — always use this pattern or the `copyText()` utility in DM components.
+
+```typescript
+// Good - checks secure context, falls back to execCommand
+if (navigator.clipboard && window.isSecureContext) {
+  await navigator.clipboard.writeText(text);
+} else {
+  // textarea fallback (see CopyButton.tsx for full implementation)
+}
+
+// Bad - silently fails on HTTP
+await navigator.clipboard.writeText(text); // throws on non-HTTPS
+```
+
+### Auto-Scroll in ScrollArea (ResizeObserver Pattern)
+
+When implementing "scroll to bottom on new content" inside a Radix ScrollArea, do **not** rely on React `useEffect` with `messages.length` — the effect fires before the DOM is updated. Instead, use a `ResizeObserver` on the scroll viewport's content element:
+
+```typescript
+const resizeObserver = new ResizeObserver(() => {
+  const wasNearBottom = prevScrollHeight - viewport.scrollTop - viewport.clientHeight < 100;
+  if (wasNearBottom && viewport.scrollHeight > prevScrollHeight) {
+    viewport.scrollTop = viewport.scrollHeight;
+  }
+  prevScrollHeight = viewport.scrollHeight;
+});
+resizeObserver.observe(viewport.firstElementChild);
+```
+
+This fires **after** the DOM has been updated, making it reliable for any kind of content change (new messages, images loading, etc.).
+
 ### Number Formatting (Locale-Aware)
 
 All numeric values displayed to the user must use the centralized `formatNumber()` utility from `@/lib/utils`. This ensures consistent locale-aware thousands separators across the entire app.

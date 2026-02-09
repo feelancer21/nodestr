@@ -56,6 +56,9 @@
 
     --label: 152 60% 35%;  /* Emerald tone for labels - visible but not overpowering */
     --link: 24 95% 50%;    /* Orange for hyperlinks - existing orange formalized */
+
+    --dm-own-bg: 217 70% 28%;   /* Dark navy blue for own DM bubbles */
+    --dm-own-fg: 0 0% 100%;     /* White text on own DM bubbles */
   }
 
   .dark {
@@ -97,6 +100,9 @@
 
     --label: 152 60% 55%;  /* Lighter emerald for dark mode */
     --link: 24 90% 55%;    /* Lighter orange for dark mode */
+
+    --dm-own-bg: 217 55% 35%;   /* Slightly lighter navy for dark mode DM bubbles */
+    --dm-own-fg: 0 0% 100%;     /* White text on own DM bubbles */
   }
 }
 

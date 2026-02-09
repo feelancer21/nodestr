@@ -1,71 +1,224 @@
+import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { CopyButton } from '@/components/clip/CopyButton';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MessageContentProps {
   content: string;
   isFromMe: boolean;
+  /** Called when user clicks a blockquote (reply quote) — passes the quoted text */
+  onQuoteClick?: (quotedText: string) => void;
 }
 
-export function MessageContent({ content, isFromMe }: MessageContentProps) {
+/** Map language identifiers to display names (Telegram-style) */
+function getLanguageName(lang?: string): string {
+  if (!lang) return 'Code';
+  const map: Record<string, string> = {
+    js: 'JavaScript', javascript: 'JavaScript',
+    ts: 'TypeScript', typescript: 'TypeScript',
+    tsx: 'TSX', jsx: 'JSX',
+    py: 'Python', python: 'Python',
+    rb: 'Ruby', ruby: 'Ruby',
+    go: 'Go', golang: 'Go',
+    rs: 'Rust', rust: 'Rust',
+    sh: 'Shell', bash: 'Bash', shell: 'Shell', zsh: 'Shell',
+    json: 'JSON', yaml: 'YAML', yml: 'YAML', toml: 'TOML',
+    html: 'HTML', css: 'CSS', scss: 'SCSS', less: 'LESS',
+    sql: 'SQL', graphql: 'GraphQL',
+    md: 'Markdown', markdown: 'Markdown',
+    c: 'C', cpp: 'C++', 'c++': 'C++', cs: 'C#', csharp: 'C#',
+    java: 'Java', kotlin: 'Kotlin', swift: 'Swift',
+    php: 'PHP', lua: 'Lua', perl: 'Perl',
+    dockerfile: 'Dockerfile', docker: 'Dockerfile',
+    xml: 'XML', svg: 'SVG',
+    diff: 'Diff', plaintext: 'Text', text: 'Text',
+  };
+  return map[lang.toLowerCase()] || lang.toUpperCase();
+}
+
+/** Lighter variant of oneDark — brighter comments, base text, and punctuation */
+const chatCodeTheme: { [key: string]: React.CSSProperties } = {
+  ...oneDark,
+  'code[class*="language-"]': {
+    ...(oneDark['code[class*="language-"]'] as React.CSSProperties),
+    color: '#bec5cf',
+    background: 'transparent',
+  },
+  'pre[class*="language-"]': {
+    ...(oneDark['pre[class*="language-"]'] as React.CSSProperties),
+    color: '#bec5cf',
+    background: 'transparent',
+  },
+  'comment': { color: '#7a8393', fontStyle: 'italic' as const },
+  'prolog': { color: '#7a8393' },
+  'cdata': { color: '#7a8393' },
+  'punctuation': { color: '#9da5b4' },
+};
+
+/** Copy text to clipboard with fallback for non-HTTPS contexts */
+async function copyText(text: string, containerElement: HTMLElement): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch { /* fall through to fallback */ }
+  }
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+  textArea.setAttribute('readonly', '');
+  textArea.setAttribute('tabindex', '-1');
+  textArea.setAttribute('aria-hidden', 'true');
+  containerElement.appendChild(textArea);
+  textArea.focus({ preventScroll: true });
+  textArea.select();
+  let success = false;
+  try { success = document.execCommand('copy'); } catch { success = false; }
+  containerElement.removeChild(textArea);
+  return success;
+}
+
+/** Copy button for code block header (light-on-dark, with clipboard fallback) */
+function CodeCopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const success = await copyText(value, e.currentTarget);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="p-1 rounded hover:bg-white/10 transition-colors"
+      title={copied ? 'Copied!' : 'Copy code'}
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-400" />
+      ) : (
+        <Copy className="h-3.5 w-3.5 text-white/60" />
+      )}
+    </button>
+  );
+}
+
+/** Compact clickable quote block for reply previews (max 2 lines) */
+function QuoteBlock({ children, onQuoteClick }: { children: React.ReactNode; onQuoteClick?: (text: string) => void }) {
+  const ref = useRef<HTMLQuoteElement>(null);
+  const isClickable = !!onQuoteClick;
+
+  return (
+    <blockquote
+      ref={ref}
+      className={cn(
+        'border-l-2 border-white/30 pl-2 my-1 text-xs overflow-hidden',
+        isClickable && 'cursor-pointer hover:opacity-100 opacity-80'
+      )}
+      onClick={isClickable ? () => onQuoteClick(ref.current?.textContent?.trim() || '') : undefined}
+    >
+      <div className="line-clamp-2">{children}</div>
+    </blockquote>
+  );
+}
+
+export function MessageContent({ content, isFromMe, onQuoteClick }: MessageContentProps) {
   return (
     <div className="text-sm">
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        p({ children }) {
-          return <p className="whitespace-pre-wrap break-words mb-1 last:mb-0">{children}</p>;
-        },
-        code({ children, className, ...props }) {
-          const isBlock = className?.startsWith('language-') || String(children).includes('\n');
-          if (!isBlock) {
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p({ children }) {
+            return <p className="whitespace-pre-wrap break-words mb-1 last:mb-0">{children}</p>;
+          },
+          // Remove default <pre> wrapper — our code component handles the full block
+          pre({ children }) {
+            return <>{children}</>;
+          },
+          code({ children, className, ...props }) {
+            const match = /language-(\w+)/.exec(className || '');
+            const language = match ? match[1] : undefined;
+            const isBlock = !!className?.startsWith('language-') || String(children).includes('\n');
+
+            if (!isBlock) {
+              return (
+                <code
+                  className={cn(
+                    'px-1 py-0.5 rounded text-xs font-mono',
+                    isFromMe ? 'bg-white/15' : 'bg-black/10 dark:bg-white/10'
+                  )}
+                  {...props}
+                >
+                  {children}
+                </code>
+              );
+            }
+
+            const codeString = String(children).replace(/\n$/, '');
+
             return (
-              <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-xs font-mono" {...props}>
-                {children}
-              </code>
+              <div className="mt-2 mb-2 rounded-lg overflow-hidden" style={{ background: 'hsl(220, 13%, 22%)' }}>
+                {/* Telegram-style header: language name + copy button */}
+                <div className="flex items-center justify-between px-3 py-1.5" style={{ background: 'hsl(220, 13%, 16%)' }}>
+                  <span className="text-xs text-white/70 font-mono">
+                    {getLanguageName(language)}
+                  </span>
+                  <CodeCopyButton value={codeString} />
+                </div>
+                {/* Syntax-highlighted code (transparent bg, wraps long lines) */}
+                <SyntaxHighlighter
+                  language={language || 'text'}
+                  style={chatCodeTheme}
+                  customStyle={{
+                    margin: 0,
+                    padding: '0.75rem',
+                    fontSize: '0.75rem',
+                    borderRadius: 0,
+                    background: 'transparent',
+                    overflowWrap: 'break-word',
+                  }}
+                  codeTagProps={{ style: { background: 'transparent' } }}
+                  wrapLongLines
+                >
+                  {codeString}
+                </SyntaxHighlighter>
+              </div>
             );
-          }
-          const codeString = String(children).replace(/\n$/, '');
-          return (
-            <div className="relative mt-2 mb-2">
-              <CopyButton
-                value={codeString}
-                className="absolute top-2 right-2"
-              />
-              <pre className={cn(
-                'rounded-lg p-3 pr-8 text-xs font-mono whitespace-pre-wrap break-words',
-                isFromMe ? 'bg-black/20' : 'bg-black/5 dark:bg-white/5'
-              )}>
-                <code {...props}>{children}</code>
-              </pre>
-            </div>
-          );
-        },
-        a({ href, children }) {
-          return (
-            <a href={href} target="_blank" rel="noopener noreferrer"
-               className="text-link hover:underline">
-              {children}
-            </a>
-          );
-        },
-        ul({ children }) {
-          return <ul className="list-disc list-inside my-1 text-sm">{children}</ul>;
-        },
-        ol({ children }) {
-          return <ol className="list-decimal list-inside my-1 text-sm">{children}</ol>;
-        },
-        strong({ children }) {
-          return <strong className="font-bold">{children}</strong>;
-        },
-        em({ children }) {
-          return <em className="italic">{children}</em>;
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+          },
+          a({ href, children }) {
+            return (
+              <a href={href} target="_blank" rel="noopener noreferrer"
+                 className="text-link hover:underline">
+                {children}
+              </a>
+            );
+          },
+          blockquote({ children }) {
+            return <QuoteBlock onQuoteClick={onQuoteClick}>{children}</QuoteBlock>;
+          },
+          ul({ children }) {
+            return <ul className="list-disc list-inside my-1 text-sm">{children}</ul>;
+          },
+          ol({ children }) {
+            return <ol className="list-decimal list-inside my-1 text-sm">{children}</ol>;
+          },
+          strong({ children }) {
+            return <strong className="font-bold">{children}</strong>;
+          },
+          em({ children }) {
+            return <em className="italic">{children}</em>;
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
