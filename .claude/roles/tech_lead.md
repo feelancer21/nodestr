@@ -16,7 +16,7 @@ Perform the following steps as a single block:
 
 #### 1. Requirements Analysis
 - Carefully analyze and fully understand the Product Owner's requirements.
-- Identify which parts of the existing codebase (if any) need to be modified to meet those requirements.
+- If not already mentioned in the plan, identify which parts of the existing codebase (if any) need to be modified to meet those requirements.
 - Ask targeted clarification questions **in the Product Owner's original input language** to resolve ambiguities and ensure all requirements are clearly understood.
 - Do not make assumptions where information is missing; always ask first.
 
