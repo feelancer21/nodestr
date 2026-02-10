@@ -11,10 +11,14 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { RelayNip11Details } from './RelayNip11Details';
-import type { RelayHealthInfo } from './dummyRelayData';
+import { PROBE_THRESHOLDS } from '@/lib/relayProbe';
+import type { RelayHealthData } from '@/lib/relayHealthStore';
 
 interface RelayCardProps {
-  relay: RelayHealthInfo;
+  url: string;
+  read: boolean;
+  write: boolean;
+  health: RelayHealthData | undefined;
   onToggleRead: (url: string) => void;
   onToggleWrite: (url: string) => void;
   onTogglePin: (url: string) => void;
@@ -22,17 +26,19 @@ interface RelayCardProps {
   canRemove: boolean;
 }
 
-const STATUS_COLORS: Record<RelayHealthInfo['status'], string> = {
+type RelayStatus = RelayHealthData['status'];
+
+const STATUS_COLORS: Record<RelayStatus, string> = {
   connected: 'bg-emerald-500',
   slow: 'bg-amber-500',
   unreachable: 'bg-red-500',
   unknown: 'bg-gray-400',
 };
 
-const STATUS_TOOLTIPS: Record<RelayHealthInfo['status'], string> = {
-  connected: 'Connected — relay is responding normally',
-  slow: 'Slow — latency exceeds 200ms. Auto relays may be disconnected; pinned relays stay connected.',
-  unreachable: 'Unreachable — relay is not responding. Auto relays will be disconnected; pinned relays keep retrying.',
+const STATUS_TOOLTIPS: Record<RelayStatus, string> = {
+  connected: `Connected — relay responded within ${PROBE_THRESHOLDS.CONNECTED_MAX_MS}ms`,
+  slow: `Slow — latency exceeds ${PROBE_THRESHOLDS.CONNECTED_MAX_MS}ms`,
+  unreachable: `Unreachable — relay did not respond within ${PROBE_THRESHOLDS.CONNECTION_TIMEOUT_MS / 1000}s`,
   unknown: 'Unknown — not yet tested',
 };
 
@@ -55,7 +61,10 @@ function renderRelayUrl(url: string): string {
 }
 
 export function RelayCard({
-  relay,
+  url,
+  read,
+  write,
+  health,
   onToggleRead,
   onToggleWrite,
   onTogglePin,
@@ -64,37 +73,46 @@ export function RelayCard({
 }: RelayCardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const status = health?.status ?? 'unknown';
+  const isPinned = health?.isPinned ?? true;
+  const nip11 = health?.nip11 ?? null;
+
   const badges = (
     <>
-      {relay.latencyMs != null && (
-        <span className={`text-xs font-mono ${getLatencyColor(relay.latencyMs)}`}>
-          {relay.latencyMs}ms
+      {health?.latencyMs != null && (
+        <span className={`text-xs font-mono ${getLatencyColor(health.latencyMs)}`}>
+          {health.latencyMs}ms
         </span>
       )}
-      {relay.read && (
+      {read && (
         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 leading-none">
           R
         </Badge>
       )}
-      {relay.write && (
+      {write && (
         <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 leading-none">
           W
         </Badge>
       )}
       <Badge
-        variant={relay.isPinned ? 'default' : 'secondary'}
+        variant={isPinned ? 'default' : 'secondary'}
         className="text-[10px] px-1.5 py-0 h-4 leading-none cursor-help"
         title={
-          relay.isPinned
-            ? 'Pinned — stays connected regardless of performance. Must be removed manually.'
-            : 'Auto — discovered automatically. May be disconnected if performance is poor.'
+          isPinned
+            ? 'Pinned — stays in your relay list regardless of performance.'
+            : 'Auto — discovered automatically via NIP-65 or NIP-66.'
         }
       >
-        {relay.isPinned ? 'Pinned' : 'Auto'}
+        {isPinned ? 'Pinned' : 'Auto'}
       </Badge>
-      {relay.clipEventsCount > 0 && (
+      {(health?.clipEventsCount ?? 0) > 0 && (
         <span className="text-xs text-muted-foreground">
-          {relay.clipEventsCount} CLIP
+          {health!.clipEventsCount} CLIP
+        </span>
+      )}
+      {health && (
+        <span className="text-xs text-muted-foreground" title="Composite health score (0-100)">
+          {health.score}
         </span>
       )}
     </>
@@ -106,11 +124,11 @@ export function RelayCard({
         {/* Row 1: Status + URL + Badges */}
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className={`size-2.5 rounded-full shrink-0 cursor-help ${STATUS_COLORS[relay.status]}`}
-            title={STATUS_TOOLTIPS[relay.status]}
+            className={`size-2.5 rounded-full shrink-0 cursor-help ${STATUS_COLORS[status]}`}
+            title={STATUS_TOOLTIPS[status]}
           />
-          <span className="font-mono text-sm truncate flex-1 min-w-0" title={relay.url}>
-            {renderRelayUrl(relay.url)}
+          <span className="font-mono text-sm truncate flex-1 min-w-0" title={url}>
+            {renderRelayUrl(url)}
           </span>
           <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             {badges}
@@ -124,7 +142,7 @@ export function RelayCard({
 
         {/* Row 2: NIP-11 trigger + Action buttons */}
         <div className="flex items-center justify-between pl-[18px]">
-          {relay.nip11 ? (
+          {nip11 ? (
             <CollapsibleTrigger asChild>
               <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronRight
@@ -151,24 +169,24 @@ export function RelayCard({
               <PopoverContent className="w-48" align="end">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={`read-${relay.url}`} className="text-sm cursor-pointer">
+                    <Label htmlFor={`read-${url}`} className="text-sm cursor-pointer">
                       Read
                     </Label>
                     <Switch
-                      id={`read-${relay.url}`}
-                      checked={relay.read}
-                      onCheckedChange={() => onToggleRead(relay.url)}
+                      id={`read-${url}`}
+                      checked={read}
+                      onCheckedChange={() => onToggleRead(url)}
                       className="data-[state=checked]:bg-green-500 scale-75"
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor={`write-${relay.url}`} className="text-sm cursor-pointer">
+                    <Label htmlFor={`write-${url}`} className="text-sm cursor-pointer">
                       Write
                     </Label>
                     <Switch
-                      id={`write-${relay.url}`}
-                      checked={relay.write}
-                      onCheckedChange={() => onToggleWrite(relay.url)}
+                      id={`write-${url}`}
+                      checked={write}
+                      onCheckedChange={() => onToggleWrite(url)}
                       className="data-[state=checked]:bg-blue-500 scale-75"
                     />
                   </div>
@@ -179,11 +197,11 @@ export function RelayCard({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onTogglePin(relay.url)}
+              onClick={() => onTogglePin(url)}
               className="size-6 text-muted-foreground hover:text-foreground"
-              title={relay.isPinned ? 'Unpin relay' : 'Pin relay'}
+              title={isPinned ? 'Unpin relay' : 'Pin relay'}
             >
-              {relay.isPinned ? (
+              {isPinned ? (
                 <PinOff className="h-3.5 w-3.5" />
               ) : (
                 <Pin className="h-3.5 w-3.5" />
@@ -193,7 +211,7 @@ export function RelayCard({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onRemove(relay.url)}
+              onClick={() => onRemove(url)}
               className="size-6 text-muted-foreground hover:text-destructive"
               disabled={!canRemove}
               title="Remove relay"
@@ -204,9 +222,9 @@ export function RelayCard({
         </div>
 
         {/* Expanded NIP-11 details */}
-        {relay.nip11 && (
+        {nip11 && (
           <CollapsibleContent>
-            <RelayNip11Details nip11={relay.nip11} />
+            <RelayNip11Details nip11={nip11} />
           </CollapsibleContent>
         )}
       </div>

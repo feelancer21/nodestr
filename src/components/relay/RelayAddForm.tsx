@@ -4,27 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/useToast';
+import { normalizeRelayUrl } from '@/lib/relayHealthStore';
 
 interface RelayAddFormProps {
   existingUrls: string[];
   onAdd: (url: string) => void;
-}
-
-function normalizeRelayUrl(url: string): string {
-  url = url.trim();
-  try {
-    return new URL(url).toString();
-  } catch {
-    try {
-      return new URL(`wss://${url}`).toString();
-    } catch {
-      try {
-        return new URL(`ws://${url}`).toString();
-      } catch {
-        return url;
-      }
-    }
-  }
 }
 
 function isValidRelayUrl(url: string): boolean {

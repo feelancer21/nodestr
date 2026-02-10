@@ -1,7 +1,7 @@
-import type { RelayHealthInfo } from './dummyRelayData';
+import type { Nip11Info } from '@/lib/relayHealthStore';
 
 interface RelayNip11DetailsProps {
-  nip11: NonNullable<RelayHealthInfo['nip11']>;
+  nip11: Nip11Info;
 }
 
 export function RelayNip11Details({ nip11 }: RelayNip11DetailsProps) {

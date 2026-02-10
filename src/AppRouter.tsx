@@ -10,7 +10,6 @@ import { NIP19Page } from "./pages/NIP19Page";
 import ProfilePage from "./pages/ProfilePage";
 import LnPubPage from "./pages/LnPubPage";
 import NodePage from "./pages/NodePage";
-import RelayTest from "./pages/RelayTest";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -23,8 +22,6 @@ export function AppRouter() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/dms" element={<DMsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          {/* Diagnostic routes */}
-          <Route path="/debug/relays" element={<RelayTest />} />
           {/* Profile routes: /profile/:nip19 or /p/:nip19 (both canonical) */}
           <Route path="/profile/:nip19Identifier" element={<ProfilePage />} />
           <Route path="/p/:nip19Identifier" element={<ProfilePage />} />

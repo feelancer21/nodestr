@@ -1,61 +1,97 @@
-import { useState } from 'react';
 import { Moon, Sun, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTheme } from '@/hooks/useTheme';
+import { useAppContext } from '@/hooks/useAppContext';
+import { useRelayHealth } from '@/hooks/useRelayHealth';
+import { normalizeRelayUrl } from '@/lib/relayHealthStore';
 import { RelayCard } from '@/components/relay/RelayCard';
 import { RelayListHeader } from '@/components/relay/RelayListHeader';
 import { RelayAddForm } from '@/components/relay/RelayAddForm';
-import { DUMMY_RELAYS } from '@/components/relay/dummyRelayData';
-import type { RelayHealthInfo } from '@/components/relay/dummyRelayData';
 
 export function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const isDarkMode = theme === 'dark';
-  const [relays, setRelays] = useState<RelayHealthInfo[]>(DUMMY_RELAYS);
-  const [isLoading, setIsLoading] = useState(false);
+  const { config, updateConfig } = useAppContext();
+  const { healthData, isProbing, probeAll, togglePin } = useRelayHealth();
 
-  const handleToggleRead = (url: string) => {
-    setRelays(prev => prev.map(r => (r.url === url ? { ...r, read: !r.read } : r)));
-  };
+  // Relay list from AppContext (single source of truth)
+  const relayList = config.relayMetadata.relays;
 
-  const handleToggleWrite = (url: string) => {
-    setRelays(prev => prev.map(r => (r.url === url ? { ...r, write: !r.write } : r)));
-  };
-
-  const handleTogglePin = (url: string) => {
-    setRelays(prev => prev.map(r => (r.url === url ? { ...r, isPinned: !r.isPinned } : r)));
-  };
-
-  const handleRemove = (url: string) => {
-    setRelays(prev => prev.filter(r => r.url !== url));
-  };
-
-  const handleAddRelay = (url: string) => {
-    const now = Math.floor(Date.now() / 1000);
-    const newRelay: RelayHealthInfo = {
+  // Combine relay list with health data for display
+  const enrichedRelays = relayList.map(relay => {
+    const url = normalizeRelayUrl(relay.url);
+    return {
       url,
-      status: 'unknown',
-      latencyMs: null,
-      clipEventsCount: 0,
-      lastChecked: now,
-      isPinned: true,
-      read: true,
-      write: true,
-      nip11: null,
+      read: relay.read,
+      write: relay.write,
+      health: healthData.get(url),
     };
-    setRelays(prev => [...prev, newRelay]);
-  };
-
-  const handleTestAll = () => {
-    setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 1500);
-  };
+  });
 
   const allUnreachable =
-    relays.length > 0 && relays.every(r => r.status === 'unreachable');
+    enrichedRelays.length > 0 &&
+    enrichedRelays.every(r => r.health?.status === 'unreachable');
+
+  // User actions → updateConfig (relay list changes)
+  const addRelay = (url: string) => {
+    const normalized = normalizeRelayUrl(url);
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: [
+          ...(current.relayMetadata?.relays ?? []),
+          { url: normalized, read: true, write: true },
+        ],
+        updatedAt: Math.floor(Date.now() / 1000),
+      },
+    }));
+  };
+
+  const removeRelay = (url: string) => {
+    const normalized = normalizeRelayUrl(url);
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: (current.relayMetadata?.relays ?? []).filter(
+          r => normalizeRelayUrl(r.url) !== normalized
+        ),
+        updatedAt: Math.floor(Date.now() / 1000),
+      },
+    }));
+  };
+
+  const toggleRead = (url: string) => {
+    const normalized = normalizeRelayUrl(url);
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: (current.relayMetadata?.relays ?? []).map(r =>
+          normalizeRelayUrl(r.url) === normalized
+            ? { ...r, read: !r.read }
+            : r
+        ),
+        updatedAt: Math.floor(Date.now() / 1000),
+      },
+    }));
+  };
+
+  const toggleWrite = (url: string) => {
+    const normalized = normalizeRelayUrl(url);
+    updateConfig((current) => ({
+      ...current,
+      relayMetadata: {
+        relays: (current.relayMetadata?.relays ?? []).map(r =>
+          normalizeRelayUrl(r.url) === normalized
+            ? { ...r, write: !r.write }
+            : r
+        ),
+        updatedAt: Math.floor(Date.now() / 1000),
+      },
+    }));
+  };
 
   return (
     <section className="grid gap-6">
@@ -100,8 +136,12 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Header with counts */}
-          {!isLoading && relays.length > 0 && (
-            <RelayListHeader relays={relays} onTestAll={handleTestAll} />
+          {enrichedRelays.length > 0 && (
+            <RelayListHeader
+              relays={enrichedRelays}
+              onTestAll={probeAll}
+              isProbing={isProbing}
+            />
           )}
 
           {/* Error banner: all relays unreachable */}
@@ -112,8 +152,8 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* Loading skeleton */}
-          {isLoading && (
+          {/* Loading skeleton — only while probing with no existing data */}
+          {isProbing && enrichedRelays.length === 0 && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
                 <div
@@ -135,24 +175,27 @@ export function SettingsPage() {
           )}
 
           {/* Relay list */}
-          {!isLoading && relays.length > 0 && (
+          {enrichedRelays.length > 0 && (
             <div className="space-y-2">
-              {relays.map((relay) => (
+              {enrichedRelays.map((relay) => (
                 <RelayCard
                   key={relay.url}
-                  relay={relay}
-                  onToggleRead={handleToggleRead}
-                  onToggleWrite={handleToggleWrite}
-                  onTogglePin={handleTogglePin}
-                  onRemove={handleRemove}
-                  canRemove={relays.length > 1}
+                  url={relay.url}
+                  read={relay.read}
+                  write={relay.write}
+                  health={relay.health}
+                  onToggleRead={toggleRead}
+                  onToggleWrite={toggleWrite}
+                  onTogglePin={togglePin}
+                  onRemove={removeRelay}
+                  canRemove={enrichedRelays.length > 1}
                 />
               ))}
             </div>
           )}
 
           {/* Empty state */}
-          {!isLoading && relays.length === 0 && (
+          {!isProbing && enrichedRelays.length === 0 && (
             <div className="rounded-md border-2 border-dashed border-border py-12 sm:py-12 text-center">
               <p className="text-muted-foreground text-sm">
                 No relays configured. Add a relay to get started.
@@ -162,8 +205,8 @@ export function SettingsPage() {
 
           {/* Add relay form */}
           <RelayAddForm
-            existingUrls={relays.map(r => r.url)}
-            onAdd={handleAddRelay}
+            existingUrls={enrichedRelays.map(r => r.url)}
+            onAdd={addRelay}
           />
         </CardContent>
       </Card>

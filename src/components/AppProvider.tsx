@@ -54,6 +54,11 @@ export function AppProvider(props: AppProviderProps) {
 
   const config = { ...defaultConfig, ...rawConfig };
 
+  // Invariant: app needs at least one read relay to function.
+  if (!config.relayMetadata.relays.some(r => r.read)) {
+    config.relayMetadata = defaultConfig.relayMetadata;
+  }
+
   const appContextValue: AppContextType = {
     config,
     updateConfig,

@@ -10,6 +10,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NostrLoginProvider } from '@nostrify/react/login';
 import { AppProvider } from '@/components/AppProvider';
+import { RelayHealthProvider } from '@/components/RelayHealthProvider';
+import { NostrSync } from '@/components/NostrSync';
 import { NWCProvider } from '@/contexts/NWCContext';
 import { SearchProvider } from '@/contexts/SearchContext';
 import { AppConfig } from '@/contexts/AppContext';
@@ -39,6 +41,7 @@ const queryClient = new QueryClient({
     relays: [
       { url: 'wss://relay.damus.io', read: true, write: true },
       { url: 'wss://nos.lol', read: true, write: true },
+      { url: 'wss://relay.primal.net', read: true, write: true },
     ],
     updatedAt: 0,
   },
@@ -53,18 +56,21 @@ export function App() {
           <SearchProvider>
             <NostrLoginProvider storageKey='nostr:login'>
               <NostrProvider>
-                <NWCProvider>
-                  <DMProvider config={{ enabled: true }}>
-                    <UnreadProvider>
-                      <TooltipProvider>
-                        <Toaster />
-                        <Suspense>
-                          <AppRouter />
-                        </Suspense>
-                      </TooltipProvider>
-                    </UnreadProvider>
-                  </DMProvider>
-                </NWCProvider>
+                <RelayHealthProvider>
+                  <NostrSync />
+                  <NWCProvider>
+                    <DMProvider config={{ enabled: true }}>
+                      <UnreadProvider>
+                        <TooltipProvider>
+                          <Toaster />
+                          <Suspense>
+                            <AppRouter />
+                          </Suspense>
+                        </TooltipProvider>
+                      </UnreadProvider>
+                    </DMProvider>
+                  </NWCProvider>
+                </RelayHealthProvider>
               </NostrProvider>
             </NostrLoginProvider>
           </SearchProvider>

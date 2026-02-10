@@ -144,16 +144,16 @@ src/
 ├── components/
 │   ├── ui/                    # shadcn/ui components (48+)
 │   ├── auth/                  # LoginArea, LoginDialog (NIP-07)
+│   ├── relay/                 # Relay management UI components
 │   ├── AppProvider.tsx        # Global config (theme, relay settings)
 │   ├── NostrProvider.tsx      # Nostr relay pool initialization
-│   ├── NostrSync.tsx          # NIP-65 relay sync on login
+│   ├── NostrSync.tsx          # NIP-65 relay sync → AppContext
+│   ├── RelayHealthProvider.tsx # Relay health monitoring (read-only enrichment)
 │   ├── NoteContent.tsx        # Rich text rendering
-│   └── RelayListManager.tsx   # NIP-65 relay management UI
 ├── pages/
 │   ├── Index.tsx              # Home feed (CLIP events)
 │   ├── OperatorProfile.tsx    # Operator profile page (Phase 3)
 │   ├── ProfilePage.tsx        # NIP-19 routing wrapper
-│   ├── RelayTest.tsx          # Relay diagnostics (/debug/relays)
 │   ├── NIP19Page.tsx          # NIP-19 identifier routing
 │   └── NotFound.tsx           # 404 page
 ├── hooks/
@@ -163,14 +163,21 @@ src/
 │   ├── useAuthor.ts           # Fetch Kind 0 metadata
 │   ├── useCurrentUser.ts      # Get logged-in user
 │   ├── useNostrPublish.ts     # Publish with auto "client" tag
+│   ├── useRelayHealth.ts      # Relay health context consumer
 │   └── [other hooks...]
 ├── contexts/
 │   ├── AppContext.ts          # App config (theme, relays)
+│   ├── RelayHealthContext.ts  # Relay health monitoring context
 │   ├── NWCContext.tsx         # Nostr Wallet Connect
 │   └── DMContext.ts           # Direct messaging
 ├── lib/
 │   ├── clip.ts                # CLIP event validation & parsing
 │   ├── clipStore.ts           # ClipStore with trust semantics
+│   ├── relayHealthStore.ts    # IndexedDB relay health persistence
+│   ├── relayProbe.ts          # WebSocket relay probing
+│   ├── relayScoring.ts        # Relay scoring (40/40/20 model)
+│   ├── nip11.ts               # NIP-11 relay metadata fetching
+│   ├── nip66.ts               # NIP-66 relay discovery parsing
 │   ├── genUserName.ts         # Generate display names from pubkeys
 │   └── utils.ts               # General utilities
 ├── test/
@@ -195,8 +202,12 @@ eslint-rules/                  # Custom ESLint rules
 3. `QueryClientProvider` - TanStack Query for data fetching
 4. `NostrLoginProvider` - NIP-07 login/signer
 5. `NostrProvider` - Nostr relay connections
-6. `NWCProvider` - Nostr Wallet Connect
-7. `TooltipProvider` - shadcn/ui tooltips
+6. `RelayHealthProvider` - Relay health monitoring (read-only enrichment layer)
+7. `NostrSync` - NIP-65 relay sync on login
+8. `NWCProvider` - Nostr Wallet Connect
+9. `DMProvider` - Direct messaging
+10. `UnreadProvider` - Unread counts
+11. `TooltipProvider` - shadcn/ui tooltips
 
 **Always read App.tsx before making changes.** Modifying the provider stack can break the entire application.
 
@@ -423,38 +434,56 @@ From Go reference (`CombinedSigner`):
 3. Nostr signature added **last**
    - Signs final event **including** sig tag
 
-## Relay Management (NIP-65)
+## Relay Management
 
-**Default Relays** (from App.tsx):
+**Source of Truth**: `AppContext` (localStorage) manages the relay list (url + read + write). `RelayHealthProvider` is a **read-only enrichment layer** that adds health metadata (status, latency, score, NIP-11).
+
+**Default Relays** (from App.tsx, used for migration):
 ```typescript
 [
   { url: 'wss://relay.damus.io', read: true, write: true },
   { url: 'wss://nos.lol', read: true, write: true },
+  { url: 'wss://relay.primal.net', read: true, write: true },
 ]
 ```
 
-**Automatic Sync**:
-1. User logs in → `NostrSync` fetches user's NIP-65 event (kind 10002)
-2. Local relay list merges with published list
-3. Changes to relay config auto-publish as kind 10002
-4. `RelayListManager` component provides UI
+**Architecture**:
+```
+AppContext (relay list: url + read + write) ← SINGLE SOURCE OF TRUTH
+     ↓ reads                    ↓ reads
+NostrProvider               RelayHealthProvider
+  (routing via ref)           (health data only: status, latency, score, nip11)
+     ↓                          ↓ persists to
+DMProvider                  IndexedDB (health metadata only)
+```
+
+**Key Components**:
+- `RelayHealthProvider` — orchestrates probing, NIP-66 discovery, NIP-11 fetch, NIP-65 publishing
+- `RelayHealthContext` — exposes health data and actions via `useRelayHealth()` hook
+- `relayHealthStore.ts` — IndexedDB persistence (health records per relay)
+- `relayProbe.ts` — WebSocket probing with CLIP event counting
+- `relayScoring.ts` — Composite scoring (0-100): Reachability 40pts + Latency 40pts + Reliability 20pts
+- `nip11.ts` — NIP-11 relay metadata (HTTP GET with `Accept: application/nostr+json`)
+- `nip66.ts` — NIP-66 relay discovery (kind 30166 + 10166)
+
+**Sync Flow**:
+1. User logs in → `NostrSync` fetches NIP-65 (kind 10002) → writes to AppContext via `updateConfig`
+2. RelayHealthProvider watches AppContext relay list, probes all relays on startup and every 5 minutes
+3. User-initiated relay changes auto-publish as kind 10002 (30s debounce)
+
+**Scoring Model** (no CLIP weight, no auto-optimization):
+
+| Factor | Weight | Details |
+|--------|--------|---------|
+| Reachability | 40 pts | connected=40, slow=15, unreachable=0 |
+| Latency | 40 pts | <200ms=40, <500ms=30, <1s=20, <2s=10, else=5 |
+| Reliability | 20 pts | 0 failures=20, ≤2=10, else=0 |
+
+**Conservative Optimizer**: No auto-add/remove of relays. NIP-66 suggestions displayed for user to confirm. Relay list changes only through user actions or NostrSync.
+
+**Storage**: IndexedDB (`nostr-relay-health-{hostname}`) for health data only. Relay list in localStorage via AppContext.
 
 **Configuration Storage**: localStorage (`nostr:app-config`)
-
-## Relay Diagnostics
-
-**Route**: `/debug/relays`
-
-**Purpose**: Test relay connectivity and diagnose issues
-
-**Features**:
-- Per-relay connection testing (5-second timeout)
-- Shows connection status, response times, event counts
-- Useful for debugging relay issues
-
-**Access from browser**: `http://localhost:5173/debug/relays`
-
-See `RELAY_DEBUG.md` for comprehensive debugging guide.
 
 ## Design System
 
@@ -957,6 +986,7 @@ Always create descriptive commit messages when work is complete.
 - ClipStore: `src/lib/clipStore.ts`
 - Feed pipeline: `src/hooks/useClipFeed.ts`
 - Operator profiles: `src/hooks/useOperatorProfile.ts`, `src/pages/OperatorProfile.tsx`
+- Relay health: `src/components/RelayHealthProvider.tsx`, `src/lib/relayHealthStore.ts`, `src/lib/relayProbe.ts`, `src/lib/relayScoring.ts`
 - Provider stack: `src/App.tsx` (read before modifying)
 - Router config: `src/AppRouter.tsx`
 
@@ -972,15 +1002,15 @@ Always create descriptive commit messages when work is complete.
 ### Default Relays
 - `wss://relay.damus.io`
 - `wss://nos.lol`
+- `wss://relay.primal.net`
 
 ### Debug Tools
-- Relay diagnostics: `/debug/relays`
-- Browser console: `[NostrProvider]`, `[useClipFeed]`, `[RelayTest]` logs
+- Browser console: `[RelayHealth]`, `[NostrProvider]`, `[useClipFeed]` logs
 - Network tab: Check WebSocket connections (Status 101 = connected)
+- Settings page: Relay health indicators, NIP-11 details, score display
 
 ## Additional Resources
 
 - **PROJECT_PLAN.md** - Full 11-phase development plan with Go reference files
-- **RELAY_DEBUG.md** - Comprehensive relay debugging guide
 - **AGENTS.md** - Detailed Nostr integration patterns and UI components
 - **CHANGELOG.md** - Phase completion history and recent changes
