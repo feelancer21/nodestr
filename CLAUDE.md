@@ -16,12 +16,6 @@ npm run test      # Run all validation (TypeScript, ESLint, Vitest, build)
 
 CLIP uses **Nostr event kind 38171** (addressable, replaceable) to publish verifiable Lightning node information. The protocol cryptographically links Lightning node identities to Nostr identities through dual signatures.
 
-### Current Development Phase
-
-The project follows an 11-phase development plan (see PROJECT_PLAN.md). 
-
-**Important**: Lightning signature cryptographic verification is **deferred until Phase 10**. Currently, Lightning signatures are format-checked but **assumed valid** to avoid crypto dependencies during early development.
-
 ### Technology Stack
 
 - React 18 + TypeScript
@@ -120,10 +114,9 @@ From `src/lib/clip.ts`, all CLIP events must pass:
    - Network is valid (for Node Info)
    - Correct d-tag format for message kind
 
-3. **Lightning signature validation** (Phase 10):
-   - Currently format-checked only
-   - Full cryptographic verification deferred until Phase 10
-   - Will use: zbase32 decoding + secp256k1 signature recovery + double SHA-256
+3. **Lightning signature validation**:
+   - zbase32 decoding + secp256k1 signature recovery + double SHA-256
+   - Recovered pubkey must match Lightning pubkey in `d` tag
 
 ### Fetch Windows
 
@@ -151,9 +144,14 @@ src/
 │   ├── RelayHealthProvider.tsx # Relay health monitoring (read-only enrichment)
 │   ├── NoteContent.tsx        # Rich text rendering
 ├── pages/
-│   ├── Index.tsx              # Home feed (CLIP events)
-│   ├── OperatorProfile.tsx    # Operator profile page (Phase 3)
+│   ├── HomePage.tsx           # Home feed (CLIP events)
+│   ├── SearchPage.tsx         # CLIP-aware search
+│   ├── DMsPage.tsx            # Direct messaging
+│   ├── SettingsPage.tsx       # Relay management, app settings
+│   ├── OperatorProfile.tsx    # Operator profile page
 │   ├── ProfilePage.tsx        # NIP-19 routing wrapper
+│   ├── NodePage.tsx           # Lightning node page
+│   ├── LnPubPage.tsx         # Lightning pubkey → operator redirect
 │   ├── NIP19Page.tsx          # NIP-19 identifier routing
 │   └── NotFound.tsx           # 404 page
 ├── hooks/
@@ -168,6 +166,8 @@ src/
 ├── contexts/
 │   ├── AppContext.ts          # App config (theme, relays)
 │   ├── RelayHealthContext.ts  # Relay health monitoring context
+│   ├── SearchContext.tsx       # Search state management
+│   ├── UnreadContext.tsx       # Unread counts
 │   ├── NWCContext.tsx         # Nostr Wallet Connect
 │   └── DMContext.ts           # Direct messaging
 ├── lib/
@@ -200,14 +200,15 @@ eslint-rules/                  # Custom ESLint rules
 1. `UnheadProvider` - SEO metadata management
 2. `AppProvider` - App config (theme, relay settings)
 3. `QueryClientProvider` - TanStack Query for data fetching
-4. `NostrLoginProvider` - NIP-07 login/signer
-5. `NostrProvider` - Nostr relay connections
-6. `RelayHealthProvider` - Relay health monitoring (read-only enrichment layer)
-7. `NostrSync` - NIP-65 relay sync on login
-8. `NWCProvider` - Nostr Wallet Connect
-9. `DMProvider` - Direct messaging
-10. `UnreadProvider` - Unread counts
-11. `TooltipProvider` - shadcn/ui tooltips
+4. `SearchProvider` - Search state management
+5. `NostrLoginProvider` - NIP-07 login/signer
+6. `NostrProvider` - Nostr relay connections
+7. `RelayHealthProvider` - Relay health monitoring (read-only enrichment layer)
+8. `NostrSync` - NIP-65 relay sync on login
+9. `NWCProvider` - Nostr Wallet Connect
+10. `DMProvider` - Direct messaging
+11. `UnreadProvider` - Unread counts
+12. `TooltipProvider` - shadcn/ui tooltips
 
 **Always read App.tsx before making changes.** Modifying the provider stack can break the entire application.
 
@@ -217,7 +218,7 @@ eslint-rules/                  # Custom ESLint rules
 CLIP event validation and parsing. Implements verification rules that mirror the Go reference:
 - Event structure validation
 - Network validation
-- Lightning signature format checks (crypto deferred to Phase 10)
+- Lightning signature cryptographic verification
 - Identifier parsing (d-tag decoding)
 
 ### 2. src/lib/clipStore.ts
@@ -247,7 +248,7 @@ Derives operator profile data:
 6. Return OperatorProfile object
 
 ### 5. src/pages/OperatorProfile.tsx
-Displays operator profiles (Phase 3):
+Displays operator profiles:
 - Nostr identity (name, picture, about from Kind 0)
 - List of operated Lightning nodes
 - Node Info payloads per network
@@ -259,13 +260,18 @@ Displays operator profiles (Phase 3):
 
 Routes defined in `AppRouter.tsx`:
 
-- `/` → Home feed (CLIP events)
-- `/profile/:nip19` → Operator profile (Phase 3)
-- `/p/:nip19` → Alternative profile route
-- `/messages` → Direct messaging
-- `/debug/relays` → Relay diagnostics
-- `/:nip19` → NIP-19 routing (npub, note, nevent, naddr)
-- `*` → 404 NotFound
+| Path | Component | Description |
+|------|-----------|-------------|
+| `/` | `HomePage` | Home feed (CLIP events) |
+| `/search` | `SearchPage` | CLIP-aware search |
+| `/dms` | `DMsPage` | Direct messaging |
+| `/settings` | `SettingsPage` | Relay management, app settings |
+| `/profile/:nip19Identifier` | `ProfilePage` | Operator profile |
+| `/p/:nip19Identifier` | `ProfilePage` | Alternative profile route |
+| `/lightning/operator/:lightningPubkey` | `LnPubPage` | Lightning pubkey → operator redirect |
+| `/lightning/:network/node/:pubkey` | `NodePage` | Lightning node page |
+| `/:nip19` | `NIP19Page` | NIP-19 routing (npub, note, nevent, naddr) |
+| `*` | `NotFound` | 404 page |
 
 **NIP-19 Routing**: Use root-level paths (e.g., `/npub1abc...`) not nested paths (e.g., `/profile/npub1abc...`).
 
@@ -344,15 +350,18 @@ if (result.identifier.kind === CLIP_ANNOUNCEMENT) {
 
 ### mempool.space API
 
-**Purpose**: Discover Lightning nodes and verify existence on mainnet.
-
 **Base URL**: `https://mempool.space` (configurable)
 
-**Endpoints**:
-- Mainnet: `/api/v1/lightning/search?searchText=<query>`
-- Signet: `/signet/api/v1/lightning/search?searchText=<query>`
-- Testnet3: `/testnet/api/v1/lightning/search?searchText=<query>`
-- Testnet4: No API available (full pubkey input only)
+| Network | Endpoint |
+|---------|----------|
+| Mainnet | `/api/v1/lightning/search?searchText=<query>` |
+| Signet | `/signet/api/v1/lightning/search?searchText=<query>` |
+| Testnet3 | `/testnet/api/v1/lightning/search?searchText=<query>` |
+| Testnet4 | No API available (full pubkey input only) |
+
+**Two use cases**: (1) Suggestion list — alias/partial search, all `nodes[]` entries are valid candidates; (2) Pubkey existence check — exact match, only for valid hex pubkeys, informational only (does not block publishing).
+
+**Key rules**: `status` field must NOT be used for filtering. Empty `nodes[]` means unknown on mainnet.
 
 **Use Case 1 - Suggestion List** (alias/partial search):
 ```typescript
@@ -413,8 +422,8 @@ const data = await response.json();
 5. User pastes zbase32 signature
 6. **nodestr validates format**:
    ```typescript
-   // Phase 3: Format check only
-   // Phase 10: Full crypto verification
+   // Verify Lightning signature
+   // Full crypto verification (zbase32 + secp256k1)
    //   - Decode zbase32
    //   - Recover pubkey from signature
    //   - Verify matches Lightning pubkey in d-tag
@@ -487,183 +496,14 @@ DMProvider                  IndexedDB (health metadata only)
 
 ## Design System
 
-### Core Principles
-1. Use CSS custom properties (variables) instead of direct Tailwind colors
-2. Never use direct slate colors (`text-slate-*`, `bg-slate-*`) - use semantic tokens
-3. Maintain consistent typography hierarchy across all components
-4. Accent colors add subtle visual interest without overwhelming
+Full design system documentation: [`docs/design-system.md`](./docs/design-system.md)
 
-### CSS Custom Properties
-
-**Text Colors:**
-- `text-foreground` - Primary text (headings, body)
-- `text-muted-foreground` - Secondary/meta text
-- `text-label` - Accent color for labels and small metadata (emerald tone)
-- `text-link` - Hyperlinks (orange tone)
-
-**Background Colors:**
-- `bg-background` - Page background
-- `bg-card` - Card backgrounds
-- `bg-muted` - Subtle emphasis areas
-
-**Border Colors:**
-- `border-border` - Standard borders
-
-### Typography Hierarchy
-
-| Element | Classes | Usage |
-|---------|---------|-------|
-| Page title | `text-2xl sm:text-3xl font-semibold text-foreground` | Main page headings |
-| Section header | `text-lg font-semibold text-foreground` | Card titles, section headings |
-| Card title | `text-base font-semibold text-foreground` | Secondary card headings |
-| Body text | `text-sm text-foreground` | Main content, descriptions |
-| Labels/Meta | `text-xs text-label` | Field labels, metadata, timestamps |
-| Muted text | `text-xs text-muted-foreground` | Hints, secondary info |
-
-### Link Styling
-All clickable links must use:
-```tsx
-className="text-link hover:underline"
-```
-
-### Component Patterns
-
-**Cards:**
-```tsx
-<Card className="border-border bg-card">
-```
-
-**Section Separation in Cards:**
-Use `border-t border-border pt-4` between sections.
-
-**Labels with Accent:**
-```tsx
-<span className="text-xs text-label">Label Text</span>
-```
-
-**Timestamps with Tooltips:**
-For relative timestamps (e.g., "24d ago") that need a full date tooltip, use the HTML `title` attribute (not the `<Tooltip>` component):
-```tsx
-// Correct - simple title attribute
-<span
-  className="text-xs text-muted-foreground"
-  title={new Date(timestamp * 1000).toLocaleString()}
->
-  {formatRelativeTime(timestamp)}
-</span>
-
-// Incorrect - don't use Tooltip component for simple timestamp tooltips
-<Tooltip>
-  <TooltipTrigger>...</TooltipTrigger>
-  <TooltipContent>...</TooltipContent>
-</Tooltip>
-```
-
-Use `formatRelativeTime()` from `@/lib/utils` for consistent relative time formatting ("24d ago", "3h ago", etc.).
-
-### Anti-Patterns (Do NOT Use)
-- `text-slate-500`, `text-slate-600`, etc.
-- `bg-slate-50`, `bg-slate-100`, etc.
-- `dark:text-slate-*` variants
-- `text-sm uppercase tracking-[0.2em]` for headers
-- Direct color values that bypass CSS variables
-
-### Responsive Override Awareness (Tailwind CSS)
-
-shadcn/ui components have responsive base classes (e.g., `CardContent` uses `p-3 pt-0 sm:p-6 sm:pt-0`). Non-responsive utility overrides (e.g., `py-12`) do **NOT** override responsive base classes at `sm:` and above — responsive rules take CSS precedence because they appear later in the generated stylesheet.
-
-**Always match responsive prefixes when overriding component padding/spacing:**
-
-```tsx
-// Bad - py-12 gets overridden by sm:p-6 sm:pt-0 at sm+ breakpoints
-<CardContent className="py-12 text-center">
-
-// Good - explicitly override at each responsive breakpoint
-<CardContent className="py-12 sm:py-12 text-center">
-```
-
-**Components with responsive base padding:**
-- `CardContent`: `p-3 pt-0 sm:p-6 sm:pt-0`
-- `CardHeader`: `p-3 sm:p-6`
-- `CardFooter`: `p-3 pt-0 sm:p-6 sm:pt-0`
-
-### Theme System
-
-- Light/dark mode with CSS custom properties
-- Control via `useTheme` hook
-- Colors defined in `src/index.css`
-- Automatic dark mode with `.dark` class
-
-### shadcn/ui Components
-
-48+ accessible components available:
-- Buttons, Cards, Dialogs, Forms, Tables, Badges, Skeletons, etc.
-- Built on Radix UI primitives
-- Styled with Tailwind CSS
-- Use `cn()` utility for class merging
-
-### Network Badge Colors
-
-```typescript
-function getNetworkBadgeColor(network: string) {
-  switch (network) {
-    case 'mainnet':  return 'bg-emerald-500/10 text-emerald-200';
-    case 'testnet':  return 'bg-blue-500/10 text-blue-200';
-    case 'testnet4': return 'bg-indigo-500/10 text-indigo-200';
-    case 'signet':   return 'bg-amber-500/10 text-amber-200';
-    default:         return 'bg-slate-500/10 text-slate-200';
-  }
-}
-```
-
-### Loading States
-
-**Use skeleton loaders** for structured content (feeds, profiles, forms):
-```tsx
-<Card>
-  <CardHeader>
-    <Skeleton className="h-4 w-48" />
-  </CardHeader>
-  <CardContent>
-    <Skeleton className="h-4 w-full" />
-    <Skeleton className="h-4 w-4/5" />
-  </CardContent>
-</Card>
-```
-
-**Use spinners** only for buttons or short operations.
-
-### Empty States
-
-```tsx
-<Card className="border-dashed">
-  <CardContent className="py-12 text-center">
-    <p className="text-muted-foreground">
-      No results found. Check relay connections or wait for content to load.
-    </p>
-  </CardContent>
-</Card>
-```
-
-### Data Table Design Reference
-
-**Preferred Implementation**: [OpenStatus Data Table](https://data-table.openstatus.dev/light)
-
-**Why it fits**:
-- Built on TanStack Table + shadcn/ui (already in stack)
-- Matches existing design system and theming
-- Faceted filters, sorting, command palette integration
-- URL-based state persistence with `nuqs` (optional)
-
-**Key Features**:
-- Multi-column filtering (status, network, date range, text search)
-- Command palette integration (`⌘K` - using `cmdk` package)
-- Responsive design with light/dark mode
-- Advanced query syntax (union filters, range filters, phrase search)
-
-**Usage**:
-- Future: CLIP event management, admin views
-- Reference for complex data table implementations
+**Key rules** (always apply):
+- Use CSS custom properties, never direct slate colors
+- Use semantic tokens: `text-foreground`, `text-muted-foreground`, `text-label`, `text-link`
+- Typography hierarchy: page title (2xl), section header (lg), card title (base), body (sm), labels (xs)
+- Match responsive prefixes when overriding shadcn/ui padding (e.g., `py-12 sm:py-12`)
+- Use `formatRelativeTime()` with HTML `title` for timestamps
 
 ## Testing
 
@@ -729,40 +569,15 @@ npm run test
 
 ### MUST Follow
 
-- **Do NOT guess protocol details** - Refer to Go reference files in PROJECT_PLAN.md
-- **Do NOT invent NIPs or CLIP extensions** - Strict Go compatibility required
-- **Do NOT code ahead of current phase** - Phase 3 is in progress
-- **Keep app runnable at all times** - Every phase ends with working app
-- **Lightning signatures assumed valid** - Full crypto verification in Phase 10
-
-### Phased Development
-
-The project follows 11 phases (see PROJECT_PLAN.md):
-
-- **Phase 0**: Understanding & Architecture ✅
-- **Phase 1**: Nostr Login & Relay Settings ✅
-- **Phase 2**: Event Foundations & Feed ✅
-- **Phase 3**: Nostr Profiles (Operator-Centric) ⬅️ **CURRENT PHASE**
-- **Phase 4**: Mempool API & Node Discovery
-- **Phase 5**: CLIP-Aware Search
-- **Phase 6**: Publishing: Node Selection
-- **Phase 7**: Publishing: Node Announcement
-- **Phase 8**: Publishing: Node Info
-- **Phase 9**: DMs, Settings, Polishing
-- **Phase 10**: Lightning Signature Verification (crypto)
-- **Phase 11**: README & Documentation
-
-**STOP checkpoints between phases** - Do not proceed to next phase without explicit approval.
+- **Do NOT guess protocol details** — Refer to Go reference in `docs/clip-reference.md`
+- **Do NOT invent NIPs or CLIP extensions** — Strict Go compatibility required
+- **Keep app runnable at all times** — Every change ends with working app
 
 ## Go Reference Equivalence
 
-The CLIP implementation must **strictly mirror** the Go reference:
+The CLIP implementation must **strictly mirror** the Go reference.
 
-**Files to reference** (attached in PROJECT_PLAN.md):
-- `event.go` - Event structure, validation, signing
-- `client.go` - Fetch logic, store sync
-- `store.go` - Trust semantics, announcement handling
-- `payloads.go` - Node Info validation
+**Reference code**: `docs/clip-reference.md` (event.go, client.go, store.go, payloads.go)
 
 **Key behaviors**:
 - Latest announcement wins (by `created_at`)
@@ -783,8 +598,7 @@ The CLIP implementation must **strictly mirror** the Go reference:
 - Verify events with `verifyClipEvent()` before storing
 - Store verified events in `ClipStore` to enforce trust semantics
 - Use `TestApp` wrapper for all component tests
-- Reference Go files for protocol details
-- Check Phase 3 scope before adding features
+- Reference Go files for protocol details (`docs/clip-reference.md`)
 - **UI Components**: Before creating new components, analyze existing similar components for consistent formatting (typography, spacing, colors)
 - **Reference-First Development**: When building pages similar to existing ones (e.g., Node Page similar to OperatorProfile), read and mirror the existing implementation
 
@@ -799,11 +613,9 @@ React portals (`DialogPortal`, `createPortal`) render DOM nodes outside the pare
 - Modifying `App.tsx` without reading it first
 - Creating new providers without understanding the stack
 - Using `any` type (always use proper TypeScript types)
-- Implementing Lightning crypto before Phase 10
 - Guessing CLIP protocol details
 - Inventing custom NIPs or extensions
 - Skipping Go reference equivalence checks
-- Adding features outside current phase scope
 - **Inventing new typography sizes**: Always use the Typography Hierarchy from Design System section
 - **Creating UI without reference analysis**: Never build new pages/components without first analyzing similar existing components for formatting patterns
 - **Replacing prototypes without preserving design decisions**: When a design prototype is replaced by a real implementation, always read the prototype code first and carry over all UI/styling decisions (spacing, responsive breakpoints, interaction patterns, component sizes). The design phase has authority over functional specs for visual details.
@@ -828,21 +640,7 @@ const capacity = node.capacity.toLocaleString(); // TypeError if null
 
 ### Clipboard API (Requires Fallback)
 
-`navigator.clipboard.writeText()` only works in **secure contexts** (HTTPS or localhost). The development/testing environment may use plain HTTP, so every copy-to-clipboard implementation **must** include a `document.execCommand('copy')` fallback using a temporary textarea.
-
-**Reference implementation**: `src/components/clip/CopyButton.tsx` — always use this pattern or the `copyText()` utility in DM components.
-
-```typescript
-// Good - checks secure context, falls back to execCommand
-if (navigator.clipboard && window.isSecureContext) {
-  await navigator.clipboard.writeText(text);
-} else {
-  // textarea fallback (see CopyButton.tsx for full implementation)
-}
-
-// Bad - silently fails on HTTP
-await navigator.clipboard.writeText(text); // throws on non-HTTPS
-```
+`navigator.clipboard.writeText()` only works in **secure contexts** (HTTPS or localhost). Every copy-to-clipboard implementation **must** include a `document.execCommand('copy')` fallback. Reference: `src/components/clip/CopyButton.tsx`.
 
 ### Auto-Scroll in ScrollArea (ResizeObserver Pattern)
 
@@ -939,32 +737,6 @@ const avatarColor = pubkey ? pubkeyToColor(pubkey) : undefined;
 </AvatarFallback>
 ```
 
-## Phase 3 Scope (Current Work)
-
-### Completed
-- Profile page routing (`/profile/:nip19`, `/p/:nip19`)
-- NIP-19 identifier support (npub, nprofile)
-- `useOperatorProfile()` hook for deriving operator data
-- `OperatorProfile.tsx` page component
-- Navigation from feed cards to profiles
-- Display of:
-  - Nostr identity (Kind 0: name, picture, about)
-  - Operated Lightning nodes (from announcements)
-  - Node Info payloads (grouped by node and network)
-  - Operator timeline (CLIP events)
-
-### In Progress / Pending
-- Profile-level empty/loading/error states refinement
-- Profile interaction patterns (DM entry for verified operators)
-- Back button navigation polish
-- Feed card clickability improvements
-
-### Out of Scope (Future Phases)
-- Search functionality (Phase 4-5)
-- Publishing flows (Phase 6-8)
-- DMs (Phase 9)
-- Lightning crypto verification (Phase 10)
-
 ## Git Workflow
 
 ```bash
@@ -981,14 +753,19 @@ Always create descriptive commit messages when work is complete.
 
 ## Quick Reference
 
-### File Locations
-- CLIP validation: `src/lib/clip.ts`
-- ClipStore: `src/lib/clipStore.ts`
-- Feed pipeline: `src/hooks/useClipFeed.ts`
-- Operator profiles: `src/hooks/useOperatorProfile.ts`, `src/pages/OperatorProfile.tsx`
-- Relay health: `src/components/RelayHealthProvider.tsx`, `src/lib/relayHealthStore.ts`, `src/lib/relayProbe.ts`, `src/lib/relayScoring.ts`
-- Provider stack: `src/App.tsx` (read before modifying)
-- Router config: `src/AppRouter.tsx`
+### Context Routing Map
+
+| Task | Start Here | Reference |
+|------|-----------|-----------|
+| CLIP Protocol | `src/lib/clip.ts`, `clipStore.ts` | CLAUDE.md "CLIP Protocol Essentials" |
+| Operator Profiles | `src/pages/OperatorProfile.tsx` | `useOperatorProfile.ts` |
+| Relay Management | `src/components/RelayHealthProvider.tsx` | CLAUDE.md "Relay Management" |
+| Node Discovery | `src/pages/SearchPage.tsx` | `useMempoolSearch.ts` |
+| Direct Messages | `src/components/DMProvider.tsx` | `/nostr-direct-messages` skill |
+| UI / Design | `src/components/ui/` | `docs/design-system.md` |
+| Provider Stack | `src/App.tsx` | CLAUDE.md "Provider Stack" |
+| Nostr Patterns | — | `docs/nostr-patterns.md` |
+| CLIP Go Reference | — | `docs/clip-reference.md` |
 
 ### Important Constants
 - CLIP event kind: `38171`
@@ -1000,6 +777,7 @@ Always create descriptive commit messages when work is complete.
 - Event grace period: `600` seconds (10 minutes)
 
 ### Default Relays
+- `wss://relay.ditto.pub`
 - `wss://relay.damus.io`
 - `wss://nos.lol`
 - `wss://relay.primal.net`
@@ -1011,6 +789,7 @@ Always create descriptive commit messages when work is complete.
 
 ## Additional Resources
 
-- **PROJECT_PLAN.md** - Full 11-phase development plan with Go reference files
-- **AGENTS.md** - Detailed Nostr integration patterns and UI components
-- **CHANGELOG.md** - Phase completion history and recent changes
+- **CHANGELOG.md** — Phase completion history and recent changes
+- `docs/clip-reference.md` — CLIP protocol Go reference code (event.go, store.go, client.go, payloads.go)
+- `docs/nostr-patterns.md` — Nostr integration patterns, security model, query design
+- `docs/design-system.md` — Complete design system and visual standards

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- Context layer cleanup: reorganized documentation without deleting content
+  - Created `docs/clip-reference.md` — CLIP protocol Go reference code extracted from PROJECT_PLAN.md
+  - Created `docs/nostr-patterns.md` — Nostr integration patterns relocated from AGENTS.md
+  - Created `docs/design-system.md` — Design system consolidated from CLAUDE.md + AGENTS.md
+  - Converted AGENTS.md to pointer file (content moved to docs/)
+  - Fixed stale content in CLAUDE.md (provider stack, architecture, routing table)
+  - Replaced inline Design System section with pointer to docs/design-system.md
+  - Removed phase tracking sections from CLAUDE.md
+  - Updated Additional Resources with new docs/ references
+
 ### Added
 - Phase 3 operator profiles (Nostr user profiles) - COMPLETE:
   - `useOperatorProfile` hook for querying and deriving operator data from CLIP events.
