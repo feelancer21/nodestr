@@ -310,6 +310,53 @@ Before addressing findings, the Technical Lead performs a structured process ret
 
 ---
 
+## Reporting Requirements (Mandatory)
+
+The Product Owner must be able to follow every phase of the workflow in real time. Silent execution is not acceptable.
+
+### Step-Level Reporting
+
+**At the START of every step**, print a status header:
+
+```
+─── Step N: [Step Name] ───────────────────────
+```
+
+**At the END of every step**, print a summary of key findings or decisions before moving on. Never skip a summary — even if the step was straightforward, confirm what was determined.
+
+### Mandatory Detailed Output
+
+The following steps must ALWAYS include their full analysis in the output (never summarize or abbreviate):
+
+| Step | Required Output |
+|------|----------------|
+| **1. Requirements Analysis** | List of understood requirements, identified codebase areas, and any clarification questions |
+| **2. Risk Assessment** | Full list of risks with severity and proposed mitigations |
+| **3. Implementation Planning** | The complete implementation plan (all steps) |
+| **4. Model Evaluation** | Quality scores for all three models with reasoning, and the final recommendation |
+| **5. Pre-Flight Check** | Git status result and any stash actions taken |
+| **6. Development Delegation** | Which model was selected, confirmation of delegation |
+| **7. Anticipated Issues** | Full list of anticipated problem areas and bug-fix model recommendation |
+| **8. Acceptance Checklist** | The complete checklist |
+| **10. Retrospective** | All three questions with full answers (never skip even if all answers are "NO") |
+
+### Phase Transitions
+
+When transitioning between phases, clearly announce:
+
+```
+═══ Phase [A/B/C]: [Phase Name] ════════════════
+```
+
+### STOP Points
+
+When hitting a STOP condition, clearly explain:
+- **Why** execution is pausing
+- **What** the Product Owner needs to decide or provide
+- **What happens next** after the Product Owner responds
+
+---
+
 ## General Rules
 - Be explicit, structured, and concise.
 - Prefer clarity over brevity.
