@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useConversationMessages } from '@/hooks/useConversationMessages';
@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import { MESSAGE_PROTOCOL, type MessageProtocol } from '@/lib/dmConstants';
-import { formatConversationTime, formatFullDateTime } from '@/lib/dmUtils';
+import { formatMessageTime, formatDateSeparator, formatFullDateTime, stripCodeBlocks } from '@/lib/dmUtils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -166,7 +166,7 @@ const MessageBubble = memo(({
             )}
             title={formatFullDateTime(message.created_at)}
           >
-            {formatConversationTime(message.created_at)}
+            {formatMessageTime(message.created_at)}
           </span>
           {/* Copy message button */}
           {!message.isSending && !message.error && message.decryptedContent && (
@@ -214,6 +214,18 @@ const MessageBubble = memo(({
 });
 
 MessageBubble.displayName = 'MessageBubble';
+
+// --- Date Separator Badge ---
+
+function DateSeparator({ timestamp }: { timestamp: number }) {
+  return (
+    <div className="flex justify-center my-4">
+      <span className="text-xs text-white bg-muted-foreground/60 rounded-full px-3 py-0.5">
+        {formatDateSeparator(timestamp)}
+      </span>
+    </div>
+  );
+}
 
 // --- Chat Header (desktop only) ---
 
@@ -503,7 +515,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
 
   // Truncate reply preview to ~2 lines worth of text
   const replyPreviewText = replyTo
-    ? replyTo.content.split('\n').slice(0, 2).join('\n').slice(0, 200)
+    ? stripCodeBlocks(replyTo.content.split('\n').slice(0, 2).join('\n').slice(0, 200))
     : '';
 
   return (
@@ -547,15 +559,23 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
                   </Button>
                 </div>
               )}
-              {messages.map((message) => (
-                <MessageBubble
-                  key={message.originalGiftWrapId || message.id}
-                  message={message}
-                  isFromCurrentUser={message.pubkey === user.pubkey}
-                  onReply={handleReply}
-                  onQuoteClick={findAndScrollToOriginal}
-                />
-              ))}
+              {messages.map((message, index) => {
+                const showDateSep = index === 0 || (
+                  new Date(messages[index - 1].created_at * 1000).toDateString() !==
+                  new Date(message.created_at * 1000).toDateString()
+                );
+                return (
+                  <Fragment key={message.originalGiftWrapId || message.id}>
+                    {showDateSep && <DateSeparator timestamp={message.created_at} />}
+                    <MessageBubble
+                      message={message}
+                      isFromCurrentUser={message.pubkey === user.pubkey}
+                      onReply={handleReply}
+                      onQuoteClick={findAndScrollToOriginal}
+                    />
+                  </Fragment>
+                );
+              })}
             </>
           )}
         </div>

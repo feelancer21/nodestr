@@ -87,12 +87,64 @@ export function formatConversationTime(timestamp: number): string {
  */
 export function formatFullDateTime(timestamp: number): string {
   const date = new Date(timestamp * 1000);
-  return date.toLocaleString(undefined, { 
+  return date.toLocaleString(undefined, {
     weekday: 'short',
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric', 
-    hour: 'numeric', 
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
     minute: '2-digit'
   });
+}
+
+export function formatMessageTime(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const now = new Date();
+
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+  const timeStr = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  if (date >= todayStart) {
+    return timeStr;
+  } else if (date >= yesterdayStart) {
+    return `Yesterday, ${timeStr}`;
+  } else if (date >= weekStart) {
+    const dayName = date.toLocaleDateString(undefined, { weekday: 'short' });
+    return `${dayName}, ${timeStr}`;
+  } else if (date.getFullYear() === now.getFullYear()) {
+    const monthDay = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${monthDay}, ${timeStr}`;
+  } else {
+    const fullDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${fullDate}, ${timeStr}`;
+  }
+}
+
+export function formatDateSeparator(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  const now = new Date();
+
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+  if (date >= todayStart) {
+    return 'Today';
+  } else if (date >= yesterdayStart) {
+    return 'Yesterday';
+  } else if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+  } else {
+    return date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+}
+
+export function stripCodeBlocks(content: string): string {
+  return content.replace(/```[\s\S]*?```/g, '[Code]').trim();
 }

@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { stripCodeBlocks } from '@/lib/dmUtils';
 
 interface MessageContentProps {
   content: string;
@@ -110,26 +111,33 @@ function CodeCopyButton({ value }: { value: string }) {
   );
 }
 
-/** Compact clickable quote block for reply previews (max 2 lines) */
-function QuoteBlock({ children, onQuoteClick }: { children: React.ReactNode; onQuoteClick?: (text: string) => void }) {
-  const ref = useRef<HTMLQuoteElement>(null);
+/** Compact clickable quote block — renders plain text (no syntax highlighting) */
+function QuoteBlock({ rawText, onQuoteClick }: { rawText: string; onQuoteClick?: (text: string) => void }) {
   const isClickable = !!onQuoteClick;
+  const displayText = stripCodeBlocks(rawText);
 
   return (
     <blockquote
-      ref={ref}
       className={cn(
         'border-l-2 border-white/30 pl-2 my-1 text-xs overflow-hidden',
         isClickable && 'cursor-pointer hover:opacity-100 opacity-80'
       )}
-      onClick={isClickable ? () => onQuoteClick(ref.current?.textContent?.trim() || '') : undefined}
+      onClick={isClickable ? () => onQuoteClick(rawText) : undefined}
     >
-      <div className="line-clamp-2">{children}</div>
+      <p className="line-clamp-2 whitespace-pre-wrap break-words">{displayText}</p>
     </blockquote>
   );
 }
 
 export function MessageContent({ content, isFromMe, onQuoteClick }: MessageContentProps) {
+  // Extract raw text from blockquote lines for plain-text rendering and click matching
+  const quotedRawText = useMemo(() => {
+    return content.split('\n')
+      .filter(line => line.startsWith('>'))
+      .map(line => line.startsWith('> ') ? line.slice(2) : line.slice(1))
+      .join('\n');
+  }, [content]);
+
   return (
     <div className="text-sm">
       <ReactMarkdown
@@ -200,8 +208,8 @@ export function MessageContent({ content, isFromMe, onQuoteClick }: MessageConte
               </a>
             );
           },
-          blockquote({ children }) {
-            return <QuoteBlock onQuoteClick={onQuoteClick}>{children}</QuoteBlock>;
+          blockquote() {
+            return <QuoteBlock rawText={quotedRawText} onQuoteClick={onQuoteClick} />;
           },
           ul({ children }) {
             return <ul className="list-disc list-inside my-1 text-sm">{children}</ul>;
