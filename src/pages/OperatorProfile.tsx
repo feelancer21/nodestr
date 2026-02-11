@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { Globe, Mail } from 'lucide-react';
+import { Globe, Mail, Pencil } from 'lucide-react';
 import { useOperatorProfile } from '@/hooks/useOperatorProfile';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -14,6 +14,7 @@ import { AnnouncementCard, NodeInfoCard } from '@/components/clip';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { FormattedText } from '@/components/clip/FormattedText';
 import { ImageZoomModal } from '@/components/clip/ImageZoomModal';
+import { EditProfileDialog } from '@/components/EditProfileDialog';
 import { pubkeyToColor } from '@/lib/utils';
 
 interface OperatorProfileProps {
@@ -28,6 +29,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
   const navigate = useNavigate();
   const [bannerZoomOpen, setBannerZoomOpen] = useState(false);
   const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleMailClick = () => {
     if (!user) {
@@ -117,7 +119,7 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
 
         {/* Content area with overlapping avatar */}
         <div className="relative px-6 sm:px-8 pb-8 pt-4 bg-card">
-          {/* Mail icon - right-aligned */}
+          {/* Mail icon - right-aligned (other users only) */}
           {pubkey && pubkey !== user?.pubkey && (
             <button
               onClick={handleMailClick}
@@ -125,6 +127,16 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
               title="Send Message"
             >
               <Mail className="h-5 w-5" />
+            </button>
+          )}
+          {/* Edit icon - right-aligned (own profile only) */}
+          {pubkey === user?.pubkey && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="absolute top-4 right-6 sm:right-8 z-10 text-muted-foreground hover:text-foreground transition"
+              title="Edit Profile"
+            >
+              <Pencil className="h-5 w-5" />
             </button>
           )}
           {/* Avatar - positioned to overlap banner */}
@@ -212,6 +224,9 @@ export function OperatorProfile({ pubkey }: OperatorProfileProps) {
           onOpenChange={setAvatarZoomOpen}
         />
       )}
+
+      {/* Edit Profile Dialog */}
+      <EditProfileDialog open={editOpen} onOpenChange={setEditOpen} />
 
       {/* Operating Lightning Nodes Section */}
       <section className="space-y-4 min-w-0">
