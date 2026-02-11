@@ -92,17 +92,18 @@ On Resume after STOP: Product Owner selects new model. Restart from step 1.
 
 ### Phase B: Execution (Steps 5–8)
 
-#### 5. Code Backup
-- Check whether there are uncommitted changes in the working directory with git status.
+#### 5. Pre-Flight Check
+- Run `git status` to check for uncommitted changes in the working directory.
 - If there are no uncommitted changes, CONTINUE to step 6.
-
-- If there are uncommitted changes, perform the following:
-  - Before making any code changes, create a backup of the current working state using git stash.
-  - Choose a short description that summarizes the intended change (e.g., "add_user_profile_feature").
-  - Execute the following command:
+- If there are uncommitted changes:
+  - **Inform the Product Owner** about the uncommitted changes (list the affected files).
+  - Create a snapshot of the current working state using `git stash create` and log it to `stash_list.txt` (worktree-safe — does NOT modify the shared stash reflog):
     ```bash
-    git stash push --include-untracked -m "$(date +%Y%m%d_%H%M%S)_pre_[SHORT_DESCRIPTION_OF_CHANGE]" && git stash apply
+    SHA=$(git stash create "pre_[SHORT_DESCRIPTION]") && echo "$SHA $(date +%Y%m%d_%H%M%S)_$(git branch --show-current)_pre_[SHORT_DESCRIPTION]" >> stash_list.txt
     ```
+  - Recovery if needed: `git stash apply <SHA>` using a SHA from `stash_list.txt`.
+  - CONTINUE to step 6. The working directory is unchanged — `git stash create` only creates the backup object without modifying any files.
+  - **Do NOT use `git stash push/pop/apply`** without an explicit SHA — the stash reflog (`refs/stash`) is shared across git worktrees and causes race conditions when multiple agents run in parallel.
 
 #### 6. Development Delegation
 - Delegate the implementation to the AI model selected at "Phase A Checkpoint". Confirm the delegation to the product owner by printing the model.
