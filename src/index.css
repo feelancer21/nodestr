@@ -115,3 +115,32 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* dvh (dynamic viewport height) adjusts for mobile browser chrome (URL bar).
+   vh fallback for browsers without dvh support (pre-2022). */
+@layer utilities {
+  .min-h-dvh {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  /* DM viewport height — must use same unit as min-h-dvh to avoid gaps.
+     Mobile: pt-20 (5rem) + pb-2 (0.5rem) = 5.5rem
+     sm: pb grows to pb-8 → pt-20 (5rem) + pb-8 (2rem) = 7rem
+     xl: pt-8 (2rem) + pb-8 (2rem) + HeaderArea + gap = 8.5rem */
+  .h-dm-viewport {
+    height: calc(100vh - 5.5rem);
+    height: calc(100dvh - 5.5rem);
+  }
+  @media (min-width: 640px) {
+    .h-dm-viewport {
+      height: calc(100vh - 7rem);
+      height: calc(100dvh - 7rem);
+    }
+  }
+  @media (min-width: 1280px) {
+    .h-dm-viewport {
+      height: calc(100vh - 8.5rem);
+      height: calc(100dvh - 8.5rem);
+    }
+  }
+}

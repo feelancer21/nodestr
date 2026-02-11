@@ -23,7 +23,7 @@ export function DMsPage() {
 
   return (
     <DMMessagingInterface
-      className="h-[calc(100vh-7rem)] xl:h-[calc(100vh-8.5rem)]"
+      className="h-dm-viewport"
     />
   );
 }

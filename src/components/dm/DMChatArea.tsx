@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo, Fragment } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, memo, Fragment, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import { useConversationMessages } from '@/hooks/useConversationMessages';
@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import { MESSAGE_PROTOCOL, type MessageProtocol } from '@/lib/dmConstants';
-import { formatMessageTime, formatDateSeparator, formatFullDateTime, stripCodeBlocks } from '@/lib/dmUtils';
+import { formatMessageTime, formatDateSeparator, formatFullDateTime, stripCodeBlocks, resolveEmoticon } from '@/lib/dmUtils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { MessageCircle, Send, Loader2, ShieldCheck, Lock, Copy, Check, Reply, X } from 'lucide-react';
+import { EmojiPickerButton } from '@/components/dm/EmojiPicker';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { NoteContent } from '@/components/NoteContent';
 import { MessageContent } from '@/components/dm/MessageContent';
@@ -262,21 +263,23 @@ const ChatHeader = ({ pubkey }: { pubkey: string }) => {
 
 // --- Auto-Growing Textarea ---
 
-function AutoGrowTextarea({
-  value,
-  onChange,
-  onKeyDown,
-  disabled,
-}: {
+const AutoGrowTextarea = forwardRef<HTMLTextAreaElement, {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   disabled?: boolean;
-}) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+}>(({ value, onChange, onKeyDown, disabled }, ref) => {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+
+  // Merge refs: both the forwarded ref and internal ref point to the same element
+  const setRefs = useCallback((node: HTMLTextAreaElement | null) => {
+    (internalRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) (ref as React.MutableRefObject<HTMLTextAreaElement | null>).current = node;
+  }, [ref]);
 
   const adjustHeight = useCallback(() => {
-    const el = textareaRef.current;
+    const el = internalRef.current;
     if (!el) return;
     el.style.height = 'auto';
     const maxHeight = 160; // ~6 lines
@@ -290,7 +293,7 @@ function AutoGrowTextarea({
 
   return (
     <Textarea
-      ref={textareaRef}
+      ref={setRefs}
       placeholder="Type a message..."
       className="!min-h-0 max-h-[160px] py-2 resize-none overflow-hidden"
       rows={1}
@@ -298,9 +301,12 @@ function AutoGrowTextarea({
       onChange={onChange}
       onKeyDown={onKeyDown}
       disabled={disabled}
+      autoComplete="off"
     />
   );
-}
+});
+
+AutoGrowTextarea.displayName = 'AutoGrowTextarea';
 
 // --- Main DMChatArea ---
 
@@ -321,6 +327,12 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Track resolved emoticons for undo: emoji string → original emoticon
+  const resolvedEmojisRef = useRef<Map<string, string>>(new Map());
+  const prevTextRef = useRef('');
+  // Suppress re-resolution after undo: position → emoticon text
+  const suppressedRef = useRef<Map<number, string>>(new Map());
 
   // Helper: get the Radix ScrollArea viewport element
   const getViewport = useCallback(() => {
@@ -337,6 +349,9 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     if (!pubkey) return;
     const draft = draftsRef.current.get(pubkey) || '';
     setMessageText(draft);
+    prevTextRef.current = draft;
+    resolvedEmojisRef.current.clear();
+    suppressedRef.current.clear();
     setReplyTo(null);
     notifyDraftsChange();
   }, [pubkey, notifyDraftsChange]);
@@ -444,6 +459,10 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
       notifyDraftsChange();
       // Auto-mark conversation as read after sending
       markAsRead(pubkey);
+      // Refocus textarea to prevent mobile keyboard dismiss/layout shift
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
+      });
     } catch (error) {
       console.error('Failed to send message:', error);
     } finally {
@@ -529,7 +548,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
 
       {/* Messages */}
       <ScrollArea ref={scrollAreaRef} className="flex-1">
-        <div className="p-2 sm:p-4">
+        <div className="px-1 py-2 sm:p-4">
           {messages.length === 0 ? (
             <div className="h-32 flex items-center justify-center">
               <div className="text-center text-muted-foreground">
@@ -606,14 +625,14 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
       )}
 
       {/* Message Input */}
-      <div className={cn('px-3 py-2 sm:p-4 shrink-0', !replyTo && 'border-t border-border')}>
-        <div className="flex gap-2 items-end">
+      <div className={cn('px-1 py-1.5 sm:px-4 sm:py-2 shrink-0', !replyTo && 'border-t border-border')}>
+        <div className="flex gap-1 items-end">
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 sm:h-10 sm:w-10 shrink-0"
+                className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
                 onClick={() => setSendProtocol(prev => prev === MESSAGE_PROTOCOL.NIP17 ? MESSAGE_PROTOCOL.NIP04 : MESSAGE_PROTOCOL.NIP17)}
                 disabled={isSending}
               >
@@ -634,10 +653,70 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
             </TooltipContent>
           </Tooltip>
           <AutoGrowTextarea
+            ref={textareaRef}
             value={messageText}
             onChange={(e) => {
               const val = e.target.value;
+              const textarea = e.target;
+              const cursor = textarea.selectionStart;
+              const prevText = prevTextRef.current;
+
+              // --- Undo: if text got shorter and a resolved emoji was deleted, restore emoticon ---
+              if (val.length < prevText.length && resolvedEmojisRef.current.size > 0) {
+                // Find where the edit happened
+                let diffStart = 0;
+                while (diffStart < val.length && val[diffStart] === prevText[diffStart]) diffStart++;
+                const removed = prevText.slice(diffStart, diffStart + (prevText.length - val.length));
+                const emoticon = resolvedEmojisRef.current.get(removed);
+                if (emoticon) {
+                  resolvedEmojisRef.current.delete(removed);
+                  suppressedRef.current.set(diffStart, emoticon);
+                  const restored = val.slice(0, diffStart) + emoticon + val.slice(diffStart);
+                  const newCursor = diffStart + emoticon.length;
+                  prevTextRef.current = restored;
+                  setMessageText(restored);
+                  if (pubkey) {
+                    if (restored.trim()) draftsRef.current.set(pubkey, restored);
+                    else draftsRef.current.delete(pubkey);
+                  }
+                  requestAnimationFrame(() => {
+                    textarea.setSelectionRange(newCursor, newCursor);
+                  });
+                  return;
+                }
+              }
+
+              // --- Emoticon auto-resolution: space/newline after emoticon → replace with emoji ---
+              if (cursor > 1 && (val[cursor - 1] === ' ' || val[cursor - 1] === '\n')) {
+                const textBeforeTrigger = val.slice(0, cursor - 1);
+                const result = resolveEmoticon(textBeforeTrigger);
+                if (result && suppressedRef.current.get(result.emojiStart) !== result.emoticon) {
+                  // Consume the trigger space; keep it only when there's trailing text
+                  const afterTrigger = val.slice(cursor);
+                  const resolved = afterTrigger
+                    ? result.replacement + ' ' + afterTrigger
+                    : result.replacement;
+                  const newCursor = result.replacement.length + (afterTrigger ? 1 : 0);
+                  resolvedEmojisRef.current.set(result.emoji, result.emoticon);
+                  prevTextRef.current = resolved;
+                  setMessageText(resolved);
+                  if (pubkey) {
+                    if (resolved.trim()) draftsRef.current.set(pubkey, resolved);
+                    else draftsRef.current.delete(pubkey);
+                  }
+                  requestAnimationFrame(() => {
+                    textarea.setSelectionRange(newCursor, newCursor);
+                  });
+                  return;
+                }
+              }
+
+              prevTextRef.current = val;
               setMessageText(val);
+              // Clear suppression for emoticons whose text has been edited
+              for (const [pos, emo] of suppressedRef.current) {
+                if (val.slice(pos, pos + emo.length) !== emo) suppressedRef.current.delete(pos);
+              }
               if (pubkey) {
                 if (val.trim()) {
                   draftsRef.current.set(pubkey, val);
@@ -649,11 +728,31 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
             onKeyDown={handleKeyDown}
             disabled={isSending}
           />
+          <EmojiPickerButton
+            onEmojiSelect={(emoji) => {
+              const textarea = textareaRef.current;
+              if (textarea) {
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const newText = messageText.slice(0, start) + emoji + messageText.slice(end);
+                setMessageText(newText);
+                if (pubkey) draftsRef.current.set(pubkey, newText);
+                requestAnimationFrame(() => {
+                  textarea.focus();
+                  const newPos = start + emoji.length;
+                  textarea.setSelectionRange(newPos, newPos);
+                });
+              } else {
+                setMessageText(prev => prev + emoji);
+              }
+            }}
+            disabled={isSending}
+          />
           <Button
             onClick={handleSend}
             disabled={!messageText.trim() || isSending}
             size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10 shrink-0"
+            className="h-8 w-8 sm:h-10 sm:w-10 shrink-0"
           >
             {isSending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

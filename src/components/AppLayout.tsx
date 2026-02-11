@@ -5,11 +5,11 @@ import { HeaderArea } from './layout/HeaderArea';
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground">
       {/* Mobile/Tablet header - visible below xl */}
       <MobileHeader />
 
-      <div className="mx-auto flex max-w-7xl items-stretch gap-6 px-2 sm:px-6 pt-20 pb-8 xl:pt-8">
+      <div className="mx-auto flex max-w-7xl items-stretch gap-6 px-2 sm:px-6 pt-20 pb-2 sm:pb-8 xl:pt-8">
         <AppSidebar />
         {/* Right side wrapper: HeaderArea + Main Content */}
         <div className="flex-1 min-w-0 flex flex-col">

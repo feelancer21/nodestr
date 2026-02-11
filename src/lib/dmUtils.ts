@@ -148,3 +148,58 @@ export function formatDateSeparator(timestamp: number): string {
 export function stripCodeBlocks(content: string): string {
   return content.replace(/```[\s\S]*?```/g, '[Code]').trim();
 }
+
+/** Emoticon → emoji mapping (Telegram-style). Longest matches first to avoid partial replacements. */
+const EMOTICON_MAP: [string, string][] = [
+  // Multi-char emoticons (must be checked before shorter ones)
+  [':-)', '😊'], [':)', '😊'],
+  [':-(', '😞'], [':(', '😞'],
+  [':-D', '😃'], [':D', '😃'],
+  [':-P', '😛'], [':P', '😛'], [':-p', '😛'], [':p', '😛'],
+  [';-)', '😉'], [';)', '😉'],
+  [':-O', '😮'], [':O', '😮'], [':-o', '😮'], [':o', '😮'],
+  [':-|', '😐'], [':|', '😐'],
+  [':-/', '😕'], [':/', '😕'],
+  [":'(", '😢'], [":'-(", '😢'],
+  [':*', '😘'], [':-*', '😘'],
+  ['<3', '❤️'],
+  ['>:(', '😠'], ['>:-(', '😠'],
+  ['B-)', '😎'], ['B)', '😎'],
+  ['O:)', '😇'], ['O:-)', '😇'],
+  [':3', '😺'],
+  ['XD', '😆'], ['xD', '😆'],
+  ['>:)', '😈'], ['>:-)', '😈'],
+  [':-S', '😖'], [':S', '😖'], [':-s', '😖'], [':s', '😖'],
+  ['\\o/', '🙌'],
+  ['(y)', '👍'], ['(Y)', '👍'],
+  ['(n)', '👎'], ['(N)', '👎'],
+];
+
+// Sort by length descending so longer emoticons match first
+const SORTED_EMOTICONS = [...EMOTICON_MAP].sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * Try to replace a trailing emoticon with its emoji.
+ * @param textBeforeTrigger — text before the space/newline that triggered the check
+ * @returns replacement info or null if no emoticon matched
+ */
+export function resolveEmoticon(
+  textBeforeTrigger: string,
+): { replacement: string; emoticon: string; emoji: string; emojiStart: number } | null {
+  for (const [emoticon, emoji] of SORTED_EMOTICONS) {
+    if (!textBeforeTrigger.endsWith(emoticon)) continue;
+
+    // Emoticon must be at start of text or preceded by whitespace
+    const posBeforeEmoticon = textBeforeTrigger.length - emoticon.length - 1;
+    if (posBeforeEmoticon >= 0) {
+      const charBefore = textBeforeTrigger[posBeforeEmoticon];
+      if (charBefore !== ' ' && charBefore !== '\n') continue;
+    }
+
+    const emojiStart = textBeforeTrigger.length - emoticon.length;
+    const replacement = textBeforeTrigger.slice(0, emojiStart) + emoji;
+    return { replacement, emoticon, emoji, emojiStart };
+  }
+
+  return null;
+}
