@@ -14,12 +14,13 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { MessageCircle, Send, Loader2, ShieldCheck, Lock, Copy, Check, Reply, X } from 'lucide-react';
+import { MessageCircle, Send, Loader2, ShieldCheck, Lock, Copy, Check, Reply, Forward, X } from 'lucide-react';
 import { EmojiPickerButton } from '@/components/dm/EmojiPicker';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { NoteContent } from '@/components/NoteContent';
 import { MessageContent } from '@/components/dm/MessageContent';
 import { DMViewSourceModal } from '@/components/dm/DMViewSourceModal';
+import { ForwardMessageDialog } from '@/components/dm/ForwardMessageDialog';
 import { useUnreadSafe } from '@/contexts/UnreadContext';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -33,6 +34,11 @@ interface DMChatAreaProps {
 interface ReplyTo {
   content: string;
   pubkey: string;
+  messageId: string;
+}
+
+interface ForwardData {
+  content: string;
   messageId: string;
 }
 
@@ -97,6 +103,7 @@ const MessageBubble = memo(({
   message,
   isFromCurrentUser,
   onReply,
+  onForward,
   onQuoteClick,
 }: {
   message: {
@@ -115,8 +122,11 @@ const MessageBubble = memo(({
   };
   isFromCurrentUser: boolean;
   onReply?: (data: ReplyTo) => void;
+  onForward?: (data: { content: string; messageId: string }) => void;
   onQuoteClick?: (quotedText: string) => void;
 }) => {
+  const [showActions, setShowActions] = useState(false);
+  const lastPointerTypeRef = useRef<string>('mouse');
   const actualKind = message.decryptedEvent?.kind || message.kind;
   const isFileAttachment = actualKind === 15;
 
@@ -130,15 +140,23 @@ const MessageBubble = memo(({
     sig: '',
   };
 
+  const hasActions = !message.isSending && !message.error && message.decryptedContent;
+
   return (
     <div
       id={`msg-${message.id}`}
       className={cn('flex mb-3 sm:mb-4 transition-colors duration-700', isFromCurrentUser ? 'justify-end' : 'justify-start')}
     >
-      <div className={cn(
-        'max-w-[95%] sm:max-w-[95%] rounded-lg px-3 py-2 sm:px-4',
-        isFromCurrentUser ? 'bg-dm-own text-dm-own-foreground' : 'bg-muted'
-      )}>
+      <div
+        className={cn(
+          'max-w-[95%] sm:max-w-[95%] rounded-lg px-3 py-2 sm:px-4',
+          isFromCurrentUser ? 'bg-dm-own text-dm-own-foreground' : 'bg-muted'
+        )}
+        onPointerEnter={(e) => { if (e.pointerType === 'mouse') setShowActions(true); }}
+        onPointerLeave={(e) => { if (e.pointerType === 'mouse') setShowActions(false); }}
+        onPointerDown={(e) => { lastPointerTypeRef.current = e.pointerType; }}
+        onClick={() => { if (lastPointerTypeRef.current === 'touch') setShowActions(prev => !prev); }}
+      >
         {message.error ? (
           <Tooltip delayDuration={200}>
             <TooltipTrigger asChild>
@@ -169,44 +187,71 @@ const MessageBubble = memo(({
           >
             {formatMessageTime(message.created_at)}
           </span>
-          {/* Copy message button */}
-          {!message.isSending && !message.error && message.decryptedContent && (
-            <MessageCopyButton
-              value={message.decryptedContent}
-              isFromMe={isFromCurrentUser}
-            />
+          {/* Action icons: hidden by default, visible on hover (desktop) or tap-toggle (mobile) */}
+          {hasActions && (
+            <div className={cn(
+              'flex items-center gap-2 transition-opacity duration-150',
+              showActions
+                ? 'opacity-100'
+                : 'opacity-0 pointer-events-none'
+            )}>
+              <MessageCopyButton
+                value={message.decryptedContent!}
+                isFromMe={isFromCurrentUser}
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReply?.({
+                    content: message.decryptedContent!,
+                    pubkey: message.pubkey,
+                    messageId: message.id,
+                  });
+                }}
+                className={cn(
+                  'inline-flex items-center transition opacity-50 hover:opacity-100',
+                  isFromCurrentUser ? 'text-dm-own-foreground' : 'text-muted-foreground'
+                )}
+                title="Reply"
+              >
+                <Reply className="h-3 w-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onForward?.({
+                    content: message.decryptedContent!,
+                    messageId: message.id,
+                  });
+                }}
+                className={cn(
+                  'inline-flex items-center transition opacity-50 hover:opacity-100',
+                  isFromCurrentUser ? 'text-dm-own-foreground' : 'text-muted-foreground'
+                )}
+                title="Forward"
+              >
+                <Forward className="h-3 w-3" />
+              </button>
+              {!message.isSending && (
+                <DMViewSourceModal
+                  storedEvent={{
+                    id: message.id,
+                    pubkey: message.pubkey,
+                    created_at: message.created_at,
+                    kind: message.kind,
+                    tags: message.tags,
+                    content: message.content,
+                    sig: message.sig,
+                  }}
+                  decryptedEvent={message.decryptedEvent}
+                  originalGiftWrapId={message.originalGiftWrapId}
+                  isFromMe={isFromCurrentUser}
+                />
+              )}
+            </div>
           )}
-          {/* Reply button (received messages only) */}
-          {!isFromCurrentUser && !message.isSending && !message.error && message.decryptedContent && (
-            <button
-              onClick={() => onReply?.({
-                content: message.decryptedContent!,
-                pubkey: message.pubkey,
-                messageId: message.id,
-              })}
-              className="inline-flex items-center transition text-muted-foreground opacity-50 hover:opacity-100"
-              title="Reply"
-            >
-              <Reply className="h-3 w-3" />
-            </button>
-          )}
-          {message.isSending ? (
+          {message.isSending && (
             <Loader2 className="h-3 w-3 animate-spin opacity-70" />
-          ) : (
-            <DMViewSourceModal
-              storedEvent={{
-                id: message.id,
-                pubkey: message.pubkey,
-                created_at: message.created_at,
-                kind: message.kind,
-                tags: message.tags,
-                content: message.content,
-                sig: message.sig,
-              }}
-              decryptedEvent={message.decryptedEvent}
-              originalGiftWrapId={message.originalGiftWrapId}
-              isFromMe={isFromCurrentUser}
-            />
           )}
         </div>
       </div>
@@ -321,6 +366,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [sendProtocol, setSendProtocol] = useState<MessageProtocol>(MESSAGE_PROTOCOL.NIP17);
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
+  const [forwardMessage, setForwardMessage] = useState<ForwardData | null>(null);
 
   // Per-conversation draft storage
   const draftsRef = useRef<Map<string, string>>(new Map());
@@ -505,6 +551,20 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     setReplyTo(data);
   }, []);
 
+  const handleForward = useCallback((data: ForwardData) => {
+    setForwardMessage(data);
+  }, []);
+
+  const doForward = useCallback(async (recipientPubkey: string) => {
+    if (!forwardMessage) return;
+    await sendMessage({
+      recipientPubkey,
+      content: forwardMessage.content,
+      protocol: sendProtocol,
+    });
+    setForwardMessage(null);
+  }, [forwardMessage, sendMessage, sendProtocol]);
+
   // No conversation selected — show empty state
   if (!pubkey) {
     return (
@@ -590,6 +650,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
                       message={message}
                       isFromCurrentUser={message.pubkey === user.pubkey}
                       onReply={handleReply}
+                      onForward={handleForward}
                       onQuoteClick={findAndScrollToOriginal}
                     />
                   </Fragment>
@@ -762,6 +823,14 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
           </Button>
         </div>
       </div>
+
+      {/* Forward Message Dialog */}
+      <ForwardMessageDialog
+        message={forwardMessage}
+        open={!!forwardMessage}
+        onOpenChange={(open) => { if (!open) setForwardMessage(null); }}
+        onForward={doForward}
+      />
     </Card>
   );
 };
