@@ -2,7 +2,7 @@
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Upload, Eye, EyeOff } from 'lucide-react';
+import { Download, Upload, Eye, EyeOff, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +22,7 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
   const [step, setStep] = useState<'generate' | 'download' | 'profile'>('generate');
   const [nsec, setNsec] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [profileData, setProfileData] = useState({
     name: '',
     about: '',
@@ -65,16 +66,49 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
       // Clean up immediately
       globalThis.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      // Continue to profile step
-      login.nsec(nsec);
-      setStep('profile');
     } catch {
       toast({
         title: 'Download failed',
         description: 'Could not download the key file. Please copy it manually.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const continueToProfile = () => {
+    login.nsec(nsec);
+    setStep('profile');
+  };
+
+  const handleCopyNsec = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    const button = e.currentTarget;
+    let success = false;
+
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(nsec);
+        success = true;
+      } catch { /* fall through */ }
+    }
+
+    if (!success) {
+      const textArea = document.createElement('textarea');
+      textArea.value = nsec;
+      textArea.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;';
+      textArea.setAttribute('readonly', '');
+      textArea.setAttribute('tabindex', '-1');
+      textArea.setAttribute('aria-hidden', 'true');
+      button.appendChild(textArea);
+      textArea.focus({ preventScroll: true });
+      textArea.select();
+      try { success = document.execCommand('copy'); } catch { success = false; }
+      button.removeChild(textArea);
+    }
+
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -158,13 +192,18 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
       setStep('generate');
       setNsec('');
       setShowKey(false);
+      setCopied(false);
       setProfileData({ name: '', about: '', picture: '' });
     }
   }, [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-sm max-h-[90dvh] p-0 gap-6 overflow-hidden rounded-2xl overflow-y-auto">
+      <DialogContent
+        className="max-w-[95vw] sm:max-w-sm max-h-[90dvh] p-0 gap-6 overflow-hidden rounded-2xl overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader className="px-6 pt-6">
           <DialogTitle className="text-lg font-semibold leading-none tracking-tight text-center">
             {getTitle()}
@@ -197,30 +236,53 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
                   type={showKey ? "text" : "password"}
                   value={nsec}
                   readOnly
-                  className="pr-10 font-mono text-sm"
+                  className="pr-20 font-mono text-sm"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowKey(!showKey)}
-                >
-                  {showKey ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
+                <div className="absolute right-0 top-0 h-full flex items-center gap-0.5 pr-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyNsec}
+                    className="inline-flex items-center justify-center p-2 rounded hover:bg-accent transition-colors"
+                    title={copied ? 'Copied!' : 'Copy to clipboard'}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="inline-flex items-center justify-center p-2 rounded hover:bg-accent transition-colors"
+                    title={showKey ? 'Hide key' : 'Show key'}
+                  >
+                    {showKey ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
               </div>
 
-              <Button
-                className="w-full h-12 px-9"
-                onClick={downloadKey}
-              >
-                <Download className="size-4" />
-                Download key
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12"
+                  onClick={downloadKey}
+                >
+                  <Download className="size-4" />
+                  Download
+                </Button>
+
+                <Button
+                  className="flex-1 h-12"
+                  onClick={continueToProfile}
+                >
+                  Continue
+                </Button>
+              </div>
 
               <div className='mx-auto max-w-sm'>
                 <div className='p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800'>
@@ -230,7 +292,7 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
                     </span>
                   </div>
                   <p className='text-xs text-amber-900 dark:text-amber-300'>
-                    This key is your primary and only means of accessing your account. Store it safely and securely. Please download your key to continue.
+                    This key is your primary and only means of accessing your account. Store it safely and securely.
                   </p>
                 </div>
               </div>

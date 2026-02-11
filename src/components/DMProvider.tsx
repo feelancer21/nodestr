@@ -206,6 +206,41 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const nip17SubscriptionRef = useRef<{ close: () => void } | null>(null);
   const debouncedWriteRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Epoch counter — incremented on each user switch to discard stale async operations
+  const userEpochRef = useRef(0);
+
+  // Reset all DM state when the active user changes (account switch)
+  const previousUserPubkey = useRef(userPubkey);
+  useEffect(() => {
+    if (previousUserPubkey.current !== userPubkey) {
+      previousUserPubkey.current = userPubkey;
+      userEpochRef.current++;
+      // Close existing subscriptions
+      if (nip4SubscriptionRef.current) {
+        nip4SubscriptionRef.current.close();
+        nip4SubscriptionRef.current = null;
+      }
+      if (nip17SubscriptionRef.current) {
+        nip17SubscriptionRef.current.close();
+        nip17SubscriptionRef.current = null;
+      }
+      // Cancel any pending debounced writes (prevents writing old user's data)
+      if (debouncedWriteRef.current) {
+        clearTimeout(debouncedWriteRef.current);
+        debouncedWriteRef.current = null;
+      }
+      // Reset all state so DMs reload for the new user
+      setMessages(new Map());
+      setLastSync({ nip4: null, nip17: null });
+      setIsLoading(false);
+      setLoadingPhase(LOADING_PHASES.IDLE);
+      setSubscriptions({ isNIP4Connected: false, isNIP17Connected: false });
+      setHasInitialLoadCompleted(false);
+      setShouldSaveImmediately(false);
+      setScanProgress({ nip4: null, nip17: null });
+    }
+  }, [userPubkey]);
+
   // ============================================================================
   // Internal Message Sending Mutations
   // ============================================================================
@@ -545,6 +580,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
   // Query relays for messages
   const queryRelaysForMessagesSince = useCallback(async (protocol: MessageProtocol, sinceTimestamp?: number): Promise<MessageProcessingResult> => {
+    const epoch = userEpochRef.current; // Capture epoch before async work
+
     if (protocol === MESSAGE_PROTOCOL.NIP17 && !enableNIP17) {
       return { lastMessageTimestamp: sinceTimestamp, messageCount: 0 };
     }
@@ -598,7 +635,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
           sortAndUpdateParticipantState(participant);
         });
 
-        mergeMessagesIntoState(newState);
+        mergeMessagesIntoState(newState, epoch);
 
         const currentTime = Math.floor(Date.now() / 1000);
         setLastSync(prev => ({ ...prev, nip4: currentTime }));
@@ -661,7 +698,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
           sortAndUpdateParticipantState(participant);
         });
 
-        mergeMessagesIntoState(newState);
+        mergeMessagesIntoState(newState, epoch);
 
         const currentTime = Math.floor(Date.now() / 1000);
         setLastSync(prev => ({ ...prev, nip17: currentTime }));
@@ -721,8 +758,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
   }, []);
 
-  // Merge messages into state
-  const mergeMessagesIntoState = useCallback((newState: MessagesState) => {
+  // Merge messages into state (guarded against stale async operations after account switch)
+  const mergeMessagesIntoState = useCallback((newState: MessagesState, epoch?: number) => {
+    if (epoch !== undefined && epoch !== userEpochRef.current) return;
     setMessages(prev => {
       const finalMap = new Map(prev);
 
@@ -762,8 +800,10 @@ export function DMProvider({ children, config }: DMProviderProps) {
     });
   }, []);
 
-  // Add message to state
-  const addMessageToState = useCallback((message: DecryptedMessage, conversationPartner: string, protocol: MessageProtocol) => {
+  // Add message to state (guarded against stale async operations after account switch)
+  const addMessageToState = useCallback((message: DecryptedMessage, conversationPartner: string, protocol: MessageProtocol, epoch?: number) => {
+    // Discard messages from in-flight decryptions that completed after an account switch
+    if (epoch !== undefined && epoch !== userEpochRef.current) return;
     setMessages(prev => {
       const newMap = new Map(prev);
       const existing = newMap.get(conversationPartner);
@@ -828,6 +868,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   // Process incoming NIP-4 message
   const processIncomingNIP4Message = useCallback(async (event: NostrEvent) => {
     if (!user?.pubkey) return;
+    const epoch = userEpochRef.current; // Capture epoch before async work
 
     if (!validateDMEvent(event)) return;
 
@@ -851,7 +892,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       decryptedMessage.clientFirstSeen = Date.now();
     }
 
-    addMessageToState(decryptedMessage, otherPubkey, MESSAGE_PROTOCOL.NIP04);
+    addMessageToState(decryptedMessage, otherPubkey, MESSAGE_PROTOCOL.NIP04, epoch);
   }, [user, decryptNIP4Message, addMessageToState]);
 
   // Process NIP-17 Gift Wrap
@@ -1023,6 +1064,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   // Process incoming NIP-17 message
   const processIncomingNIP17Message = useCallback(async (event: NostrEvent) => {
     if (!user?.pubkey) return;
+    const epoch = userEpochRef.current; // Capture epoch before async work
 
     if (event.kind !== 1059) return;
 
@@ -1057,7 +1099,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
         messageWithAnimation.clientFirstSeen = Date.now();
       }
 
-      addMessageToState(messageWithAnimation, conversationPartner, MESSAGE_PROTOCOL.NIP17);
+      addMessageToState(messageWithAnimation, conversationPartner, MESSAGE_PROTOCOL.NIP17, epoch);
     } catch (error) {
       console.error('[DM] Exception in processIncomingNIP17Message:', {
         giftWrapId: event.id,

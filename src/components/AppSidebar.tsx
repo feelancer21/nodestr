@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, MessageCircle, PlugZap, Settings, Star, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { AccountSwitcher } from '@/components/auth/AccountSwitcher';
-import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { nip19 } from 'nostr-tools';
-import { cn } from '@/lib/utils';
+import { Home, MessageCircle, PlugZap, Settings, Star, UserPlus, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
+import { useLoginActions } from '@/hooks/useLoginActions';
+import { cn, pubkeyToColor } from '@/lib/utils';
+import { genUserName } from '@/lib/genUserName';
 import { useUnreadSafe } from '@/contexts/UnreadContext';
 import LoginDialog from '@/components/auth/LoginDialog';
+import SignupDialog from '@/components/auth/SignupDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
@@ -18,9 +22,16 @@ const navItems = [
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, removeLogin } = useLoggedInAccounts();
+  const { currentUser, otherUsers, setLogin } = useLoggedInAccounts();
+  const loginActions = useLoginActions();
+  const queryClient = useQueryClient();
   const { totalUnread } = useUnreadSafe();
   const [loginOpen, setLoginOpen] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
+
+  const getDisplayName = (pubkey: string, name?: string): string => {
+    return name ?? genUserName(pubkey);
+  };
 
   const isActive = (path: string) => {
     if (location.pathname === path) return true;
@@ -29,19 +40,6 @@ export function AppSidebar() {
       location.pathname.startsWith('/p/')
     )) return true;
     return false;
-  };
-
-  const handleProfileClick = () => {
-    if (currentUser) {
-      navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`);
-    }
-  };
-
-  const handleLogout = () => {
-    if (currentUser) {
-      removeLogin(currentUser.id);
-      navigate('/');
-    }
   };
 
   const handleNavClick = (path: string) => {
@@ -92,13 +90,69 @@ export function AppSidebar() {
         <div className="space-y-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
             {currentUser ? (
-              <>
-                <AccountSwitcher onClick={handleProfileClick} />
-                <Button variant="outline" className="w-full" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </Button>
-              </>
+              <div className="space-y-2">
+                <button
+                  onClick={() => navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`)}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-all w-full text-foreground"
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={currentUser.metadata.picture} alt={getDisplayName(currentUser.pubkey, currentUser.metadata.name)} />
+                    <AvatarFallback
+                      style={{ backgroundColor: pubkeyToColor(currentUser.pubkey) }}
+                      className="text-white font-bold text-sm"
+                    >
+                      {getDisplayName(currentUser.pubkey, currentUser.metadata.name).charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 text-left truncate">
+                    <p className="font-medium text-sm truncate">{getDisplayName(currentUser.pubkey, currentUser.metadata.name)}</p>
+                  </div>
+                </button>
+                {otherUsers.length > 0 && (
+                  <div className="space-y-1 px-1">
+                    {otherUsers.map((account) => (
+                      <button
+                        key={account.id}
+                        onClick={() => {
+                          setLogin(account.id);
+                          queryClient.removeQueries();
+                        }}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent transition-all w-full text-foreground"
+                      >
+                        <Avatar className="w-6 h-6">
+                          <AvatarImage src={account.metadata.picture} alt={getDisplayName(account.pubkey, account.metadata.name)} />
+                          <AvatarFallback
+                            style={{ backgroundColor: pubkeyToColor(account.pubkey) }}
+                            className="text-white font-bold text-xs"
+                          >
+                            {getDisplayName(account.pubkey, account.metadata.name).charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs truncate">{getDisplayName(account.pubkey, account.metadata.name)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-1 px-1">
+                  <button
+                    onClick={() => setLoginOpen(true)}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Add account</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      loginActions.logout();
+                      queryClient.removeQueries();
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-accent transition-colors text-muted-foreground hover:text-foreground text-xs"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              </div>
             ) : (
               <Button className="w-full justify-start" onClick={() => setLoginOpen(true)}>
                 <PlugZap className="mr-2 h-4 w-4" />
@@ -121,6 +175,15 @@ export function AppSidebar() {
         isOpen={loginOpen}
         onClose={() => setLoginOpen(false)}
         onLogin={() => setLoginOpen(false)}
+        onSwitchToSignup={() => {
+          setLoginOpen(false);
+          setSignupOpen(true);
+        }}
+      />
+
+      <SignupDialog
+        isOpen={signupOpen}
+        onClose={() => setSignupOpen(false)}
       />
     </>
   );

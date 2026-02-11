@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Home, Menu, MessageCircle, PlugZap, Search, Settings, Star, LogOut } from 'lucide-react';
+import { Home, Menu, MessageCircle, PlugZap, Search, Settings, Star } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -15,6 +15,7 @@ import { genUserName } from '@/lib/genUserName';
 import { useUnreadSafe } from '@/contexts/UnreadContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import LoginDialog from '@/components/auth/LoginDialog';
+import SignupDialog from '@/components/auth/SignupDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
@@ -26,12 +27,13 @@ export function MobileHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { currentUser, removeLogin } = useLoggedInAccounts();
+  const { currentUser } = useLoggedInAccounts();
   const { reset: resetSearch } = useSearch();
   const { totalUnread } = useUnreadSafe();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
@@ -68,19 +70,6 @@ export function MobileHeader() {
       location.pathname.startsWith('/p/')
     )) return true;
     return false;
-  };
-
-  const handleProfileClick = () => {
-    if (currentUser) {
-      navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`);
-    }
-  };
-
-  const handleLogout = () => {
-    if (currentUser) {
-      removeLogin(currentUser.id);
-      navigate('/');
-    }
   };
 
   const handleNavClick = (path: string) => {
@@ -165,19 +154,10 @@ export function MobileHeader() {
               <div className="shrink-0 pt-6 space-y-6 border-t border-slate-200 dark:border-white/10 mt-auto">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   {currentUser ? (
-                    <>
-                      <AccountSwitcher onClick={() => {
-                        handleProfileClick();
-                        setMobileMenuOpen(false);
-                      }} />
-                      <Button variant="outline" className="w-full" onClick={() => {
-                        handleLogout();
-                        setMobileMenuOpen(false);
-                      }}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log out
-                      </Button>
-                    </>
+                    <AccountSwitcher onAddAccountClick={() => {
+                      setLoginOpen(true);
+                      setMobileMenuOpen(false);
+                    }} />
                   ) : (
                     <Button className="w-full justify-start" onClick={() => {
                       setLoginOpen(true);
@@ -226,6 +206,15 @@ export function MobileHeader() {
         isOpen={loginOpen}
         onClose={() => setLoginOpen(false)}
         onLogin={() => setLoginOpen(false)}
+        onSwitchToSignup={() => {
+          setLoginOpen(false);
+          setSignupOpen(true);
+        }}
+      />
+
+      <SignupDialog
+        isOpen={signupOpen}
+        onClose={() => setSignupOpen(false)}
       />
     </>
   );

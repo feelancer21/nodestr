@@ -17,6 +17,7 @@ interface LoginDialogProps {
   onClose: () => void;
   onLogin: () => void;
   defaultTab?: 'key' | 'bunker';
+  onSwitchToSignup?: () => void;
 }
 
 const validateNsec = (nsec: string) => {
@@ -27,7 +28,7 @@ const validateBunkerUri = (uri: string) => {
   return uri.startsWith('bunker://');
 };
 
-const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, defaultTab = 'key' }) => {
+const LoginDialog: React.FC<LoginDialogProps> = ({ isOpen, onClose, onLogin, defaultTab = 'key', onSwitchToSignup }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFileLoading, setIsFileLoading] = useState(false);
   const [nsec, setNsec] = useState('');
@@ -332,6 +333,19 @@ const renderTabs = () => (
             </Collapsible>
           ) : (
             renderTabs()
+          )}
+
+          {onSwitchToSignup && (
+            <p className="text-center text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <button
+                type="button"
+                className="text-primary hover:underline font-medium"
+                onClick={onSwitchToSignup}
+              >
+                Sign up
+              </button>
+            </p>
           )}
         </div>
       </DialogContent>
