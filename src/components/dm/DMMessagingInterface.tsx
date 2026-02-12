@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { DMConversationList } from '@/components/dm/DMConversationList';
 import { DMChatArea } from '@/components/dm/DMChatArea';
@@ -6,6 +6,7 @@ import { DMStatusInfo } from '@/components/dm/DMStatusInfo';
 import { useDMContext } from '@/hooks/useDMContext';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { loadDrafts, saveDrafts } from '@/lib/dmUtils';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,12 @@ export const DMMessagingInterface = ({ className }: DMMessagingInterfaceProps) =
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const isMobile = useIsMobile();
   const { clearCacheAndRefetch } = useDMContext();
-  const [drafts, setDrafts] = useState<Map<string, string>>(() => new Map());
+  const [drafts, setDrafts] = useState<Map<string, string>>(() => loadDrafts());
+
+  // Persist drafts to sessionStorage whenever they change
+  useEffect(() => {
+    saveDrafts(drafts);
+  }, [drafts]);
 
   // On mobile, show only one panel at a time
   const showConversationList = !isMobile || !selectedPubkey;

@@ -146,7 +146,52 @@ export function formatDateSeparator(timestamp: number): string {
 }
 
 export function stripCodeBlocks(content: string): string {
-  return content.replace(/```[\s\S]*?```/g, '[Code]').trim();
+  return content
+    .replace(/```[\s\S]*?```/g, '[Code]')
+    .replace(/\$\$[\s\S]*?\$\$/g, '[Formula]')
+    .replace(/\$[^\n$]+\$/g, '[Formula]')
+    .trim();
+}
+
+// ============================================================================
+// Draft Persistence (sessionStorage — survives navigation, cleared on tab close)
+// ============================================================================
+
+const DRAFTS_STORAGE_KEY = 'dm-drafts';
+
+/**
+ * Load draft messages from sessionStorage.
+ * Returns an empty Map if nothing is stored or parsing fails.
+ */
+export function loadDrafts(): Map<string, string> {
+  try {
+    const raw = sessionStorage.getItem(DRAFTS_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    return new Map(Object.entries(parsed));
+  } catch {
+    return new Map();
+  }
+}
+
+/**
+ * Save draft messages to sessionStorage.
+ * Only non-empty drafts are persisted; empty entries are pruned.
+ */
+export function saveDrafts(drafts: Map<string, string>): void {
+  try {
+    const obj: Record<string, string> = {};
+    for (const [key, value] of drafts) {
+      if (value.trim()) obj[key] = value;
+    }
+    if (Object.keys(obj).length === 0) {
+      sessionStorage.removeItem(DRAFTS_STORAGE_KEY);
+    } else {
+      sessionStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(obj));
+    }
+  } catch {
+    // sessionStorage may be unavailable in some contexts; silently ignore
+  }
 }
 
 /** Emoticon → emoji mapping (Telegram-style). Longest matches first to avoid partial replacements. */

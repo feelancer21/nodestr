@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAuthor } from '@/hooks/useAuthor';
 import { genUserName } from '@/lib/genUserName';
 import { MESSAGE_PROTOCOL, type MessageProtocol } from '@/lib/dmConstants';
-import { formatMessageTime, formatDateSeparator, formatFullDateTime, stripCodeBlocks, resolveEmoticon } from '@/lib/dmUtils';
+import { formatMessageTime, formatDateSeparator, formatFullDateTime, stripCodeBlocks, resolveEmoticon, loadDrafts } from '@/lib/dmUtils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -368,8 +368,8 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
   const [replyTo, setReplyTo] = useState<ReplyTo | null>(null);
   const [forwardMessage, setForwardMessage] = useState<ForwardData | null>(null);
 
-  // Per-conversation draft storage
-  const draftsRef = useRef<Map<string, string>>(new Map());
+  // Per-conversation draft storage (initialized from sessionStorage to survive navigation)
+  const draftsRef = useRef<Map<string, string>>(loadDrafts());
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
