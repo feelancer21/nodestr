@@ -116,6 +116,7 @@ export function AppSidebar() {
                         onClick={() => {
                           setLogin(account.id);
                           queryClient.removeQueries();
+                          navigate(`/profile/${nip19.npubEncode(account.pubkey)}`);
                         }}
                         className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent transition-all w-full text-foreground"
                       >
@@ -184,6 +185,9 @@ export function AppSidebar() {
       <SignupDialog
         isOpen={signupOpen}
         onClose={() => setSignupOpen(false)}
+        onComplete={(pubkey) => {
+          navigate(`/profile/${nip19.npubEncode(pubkey)}`);
+        }}
       />
     </>
   );

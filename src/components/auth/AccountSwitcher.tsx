@@ -74,6 +74,8 @@ export function AccountSwitcher({ onAddAccountClick, onNavigate }: AccountSwitch
                   onClick={() => {
                     setLogin(account.id);
                     queryClient.removeQueries();
+                    navigate(`/profile/${nip19.npubEncode(account.pubkey)}`);
+                    onNavigate?.();
                   }}
                   className="flex items-center gap-3 cursor-pointer"
                 >

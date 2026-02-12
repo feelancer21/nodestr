@@ -218,6 +218,10 @@ export function MobileHeader() {
       <SignupDialog
         isOpen={signupOpen}
         onClose={() => setSignupOpen(false)}
+        onComplete={(pubkey) => {
+          navigate(`/profile/${nip19.npubEncode(pubkey)}`);
+          setMobileMenuOpen(false);
+        }}
       />
     </>
   );

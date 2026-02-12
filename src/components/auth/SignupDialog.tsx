@@ -16,9 +16,10 @@ import { generateSecretKey, getPublicKey, nip19 } from 'nostr-tools';
 interface SignupDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onComplete?: (pubkey: string) => void;
 }
 
-const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
+const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose, onComplete }) => {
   const [step, setStep] = useState<'generate' | 'download' | 'profile'>('generate');
   const [nsec, setNsec] = useState('');
   const [showKey, setShowKey] = useState(false);
@@ -176,6 +177,14 @@ const SignupDialog: React.FC<SignupDialogProps> = ({ isOpen, onClose }) => {
         variant: 'destructive',
       });
     } finally {
+      if (nsec) {
+        try {
+          const decoded = nip19.decode(nsec);
+          if (decoded.type === 'nsec') {
+            onComplete?.(getPublicKey(decoded.data));
+          }
+        } catch { /* ignore */ }
+      }
       onClose();
     }
   };
