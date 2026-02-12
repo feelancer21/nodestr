@@ -39,6 +39,7 @@ const queryClient = new QueryClient({
   theme: "light",
   relayMetadata: {
     relays: [
+      { url: 'wss://relay.ditto.pub', read: true, write: true },
       { url: 'wss://relay.damus.io', read: true, write: true },
       { url: 'wss://nos.lol', read: true, write: true },
       { url: 'wss://relay.primal.net', read: true, write: true },
