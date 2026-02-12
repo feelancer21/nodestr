@@ -98,6 +98,13 @@ export function ViewSourceModal({ event }: ViewSourceModalProps) {
     ? `lncli verifymessage --msg "${clipHash}" --sig "${clipSignature}"`
     : null;
 
+  const hashCommand = useMemo(() => {
+    if (!isAnnouncement) return null;
+    const filteredTags = event.tags.filter(tag => tag[0] !== 'sig');
+    const serialized = JSON.stringify([0, event.pubkey, event.created_at, event.kind, filteredTags, event.content]);
+    return `printf '${serialized}' | sha256sum`;
+  }, [event, isAnnouncement]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -162,6 +169,18 @@ export function ViewSourceModal({ event }: ViewSourceModalProps) {
                           {clipSignature}
                         </code>
                         <CopyButton value={clipSignature} />
+                      </div>
+                    </div>
+                  )}
+
+                  {hashCommand && (
+                    <div>
+                      <span className="text-xs text-label">Hash Verification (Linux)</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs font-mono text-foreground break-all flex-1 bg-background p-2 rounded">
+                          {hashCommand}
+                        </code>
+                        <CopyButton value={hashCommand} />
                       </div>
                     </div>
                   )}
