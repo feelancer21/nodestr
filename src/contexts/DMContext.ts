@@ -133,6 +133,9 @@ export interface DMContextType {
   protocolMode: ProtocolMode;
   scanProgress: ScanProgressState;
   clearCacheAndRefetch: () => Promise<void>;
+  canLoadOlder: boolean;
+  isLoadingOlder: boolean;
+  loadOlderMessages: () => Promise<void>;
 }
 
 export const DMContext = createContext<DMContextType | null>(null);

@@ -167,7 +167,7 @@ export const DMConversationList = ({
   onStatusClick,
   drafts,
 }: DMConversationListProps) => {
-  const { conversations, isLoading, loadingPhase } = useDMContext();
+  const { conversations, isLoading, loadingPhase, canLoadOlder, isLoadingOlder, loadOlderMessages } = useDMContext();
   const { unreadCounts, totalUnread, markAllAsRead } = useUnread();
 
   const isInitialLoad = (loadingPhase === LOADING_PHASES.CACHE || loadingPhase === LOADING_PHASES.RELAYS) && conversations.length === 0;
@@ -261,6 +261,25 @@ export const DMConversationList = ({
                 />
               ))}
             </div>
+            {canLoadOlder && (
+              <div className="p-4 text-center">
+                <Button
+                  variant="ghost"
+                  className="text-xs text-muted-foreground"
+                  onClick={loadOlderMessages}
+                  disabled={isLoadingOlder}
+                >
+                  {isLoadingOlder ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                      Loading older messages...
+                    </>
+                  ) : (
+                    'Load older messages'
+                  )}
+                </Button>
+              </div>
+            )}
           </ScrollArea>
         )}
       </div>

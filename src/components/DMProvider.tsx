@@ -96,6 +96,8 @@ const DM_CONSTANTS = {
   BACKGROUND_SYNC_INTERVAL: 30000, // 30s fallback sync in case subscriptions drop
 } as const;
 
+const INITIAL_FETCH_WINDOW_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
 const SCAN_STATUS_MESSAGES = {
   NIP4_STARTING: 'Starting NIP-4 scan...',
   NIP17_STARTING: 'Starting NIP-17 scan...',
@@ -201,6 +203,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
     nip4: null,
     nip17: null
   });
+  const [canLoadOlder, setCanLoadOlder] = useState(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
 
   const nip4SubscriptionRef = useRef<{ close: () => void } | null>(null);
   const nip17SubscriptionRef = useRef<{ close: () => void } | null>(null);
@@ -238,6 +242,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setHasInitialLoadCompleted(false);
       setShouldSaveImmediately(false);
       setScanProgress({ nip4: null, nip17: null });
+      setCanLoadOlder(false);
+      setIsLoadingOlder(false);
     }
   }, [userPubkey]);
 
@@ -470,7 +476,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
     let allMessages: NostrEvent[] = [];
     let processedMessages = 0;
-    let currentSince = sinceTimestamp || 0;
+    let currentSince = sinceTimestamp ?? (Math.floor(Date.now() / 1000) - INITIAL_FETCH_WINDOW_SECONDS);
 
 
     setScanProgress(prev => ({ ...prev, nip4: { current: 0, status: SCAN_STATUS_MESSAGES.NIP4_STARTING } }));
@@ -534,7 +540,17 @@ export function DMProvider({ children, config }: DMProviderProps) {
     // We need to query from (lastSync - 2 days) to catch messages with randomized past timestamps
     // This may fetch duplicates, but they're filtered by message ID in addMessageToState
     const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
-    let currentSince = sinceTimestamp ? sinceTimestamp - TWO_DAYS_IN_SECONDS : 0;
+    let currentSince: number;
+    if (sinceTimestamp === undefined) {
+      // No cache - use 30-day window plus NIP-17 fuzz buffer
+      currentSince = Math.floor(Date.now() / 1000) - INITIAL_FETCH_WINDOW_SECONDS - TWO_DAYS_IN_SECONDS;
+    } else if (sinceTimestamp === 0) {
+      // Explicit "load all"
+      currentSince = 0;
+    } else {
+      // Incremental from cache
+      currentSince = sinceTimestamp - TWO_DAYS_IN_SECONDS;
+    }
 
 
     setScanProgress(prev => ({ ...prev, nip17: { current: 0, status: SCAN_STATUS_MESSAGES.NIP17_STARTING } }));
@@ -1333,8 +1349,30 @@ export function DMProvider({ children, config }: DMProviderProps) {
     setLoadingPhase(LOADING_PHASES.CACHE);
 
     try {
+      // Handle pending cache clear (e.g., Ctrl+Shift+R hard refresh)
+      // Must happen BEFORE loadAllCachedMessages to avoid race condition
+      let forceFreshLoad = false;
+      try {
+        const shouldClearCache = sessionStorage.getItem('dm-clear-cache-on-load');
+        if (shouldClearCache) {
+          sessionStorage.removeItem('dm-clear-cache-on-load');
+          if (userPubkey) {
+            const { deleteMessagesFromDB } = await import('@/lib/dmMessageStore');
+            await deleteMessagesFromDB(userPubkey);
+          }
+          forceFreshLoad = true;
+        }
+      } catch {
+        // SessionStorage unavailable — proceed normally
+      }
+
       // ===== PHASE 1: Load cache and show immediately =====
-      const { nip4Since, nip17Since } = await loadAllCachedMessages();
+      const { nip4Since, nip17Since } = forceFreshLoad
+        ? ({} as { nip4Since?: number; nip17Since?: number })
+        : await loadAllCachedMessages();
+
+      // Determine if this is a fresh load (no cache existed)
+      const isFreshLoad = nip4Since === undefined && nip17Since === undefined;
 
       // Mark as completed BEFORE releasing isLoading to prevent re-trigger
       setHasInitialLoadCompleted(true);
@@ -1357,6 +1395,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
         setShouldSaveImmediately(true);
       }
 
+      // If this was a fresh load (no cache), offer to load older messages
+      if (isFreshLoad) {
+        setCanLoadOlder(true);
+      }
+
       // ===== PHASE 3: Setup subscriptions =====
       setLoadingPhase(LOADING_PHASES.SUBSCRIPTIONS);
 
@@ -1372,7 +1415,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setLoadingPhase(LOADING_PHASES.READY);
       setIsLoading(false);
     }
-  }, [loadAllCachedMessages, queryRelaysForMessagesSince, startNIP4Subscription, startNIP17Subscription, enableNIP17, isLoading]);
+  }, [loadAllCachedMessages, queryRelaysForMessagesSince, startNIP4Subscription, startNIP17Subscription, enableNIP17, isLoading, userPubkey]);
 
   // Clear cache and refetch from relays
   const clearCacheAndRefetch = useCallback(async () => {
@@ -1399,6 +1442,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setSubscriptions({ isNIP4Connected: false, isNIP17Connected: false });
       setScanProgress({ nip4: null, nip17: null });
       setLoadingPhase(LOADING_PHASES.IDLE);
+      setIsLoading(false);
+      setCanLoadOlder(false);
+      setIsLoadingOlder(false);
 
       // Trigger reload by setting hasInitialLoadCompleted to false
       setHasInitialLoadCompleted(false);
@@ -1407,6 +1453,32 @@ export function DMProvider({ children, config }: DMProviderProps) {
       throw error;
     }
   }, [enabled, userPubkey]);
+
+  // Load older messages (fetch all from epoch)
+  const loadOlderMessages = useCallback(async () => {
+    if (isLoadingOlder || !userPubkey) return;
+
+    setIsLoadingOlder(true);
+
+    try {
+      // Fetch ALL messages from epoch (since: 0)
+      const [nip4Result, nip17Result] = await Promise.all([
+        queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP04, 0),
+        enableNIP17 ? queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP17, 0) : Promise.resolve({ lastMessageTimestamp: undefined, messageCount: 0 })
+      ]);
+
+      const totalOlderMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
+      if (totalOlderMessages > 0) {
+        setShouldSaveImmediately(true);
+      }
+
+      setCanLoadOlder(false);
+    } catch (error) {
+      console.error('[DM] Error loading older messages:', error);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [isLoadingOlder, userPubkey, queryRelaysForMessagesSince, enableNIP17]);
 
   // Main effect to load messages
   useEffect(() => {
@@ -1477,20 +1549,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
     return () => window.removeEventListener('keydown', handleHardRefresh);
   }, [enabled, userPubkey]);
 
-  // Clear cache after hard refresh
-  useEffect(() => {
-    if (!enabled || !userPubkey) return;
-
-    try {
-      const shouldClearCache = sessionStorage.getItem('dm-clear-cache-on-load');
-      if (shouldClearCache) {
-        sessionStorage.removeItem('dm-clear-cache-on-load');
-        clearCacheAndRefetch();
-      }
-    } catch (error) {
-      console.warn('[DM] Could not check sessionStorage for cache clear flag:', error);
-    }
-  }, [enabled, userPubkey, clearCacheAndRefetch]);
+  // Note: Hard refresh cache clear (Ctrl+Shift+R) is handled inside startMessageLoading
+  // to avoid race conditions between async cache deletion and initial load.
 
   // Background sync fallback: lightweight periodic query for new messages
   // in case real-time subscriptions silently drop
@@ -1720,6 +1780,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
     scanProgress,
     subscriptions,
     clearCacheAndRefetch,
+    canLoadOlder,
+    isLoadingOlder,
+    loadOlderMessages,
   };
 
   return (
