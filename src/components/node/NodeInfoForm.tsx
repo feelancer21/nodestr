@@ -335,7 +335,7 @@ export function NodeInfoForm({
     <div className="space-y-4">
       {/* About */}
       <div>
-        <span className="text-xs text-label">About</span>
+        <span className="text-sm font-medium text-foreground">About</span>
         <Textarea
           value={about}
           onChange={(e) => { setAbout(e.target.value); clearValidationError(); }}
@@ -348,10 +348,10 @@ export function NodeInfoForm({
 
       {/* Channel Sizes */}
       <div className="border-t border-border pt-4">
-        <span className="text-xs text-label">Channel Sizes (satoshis)</span>
+        <span className="text-sm font-medium text-foreground">Channel Sizes (satoshis)</span>
         <div className="flex flex-col sm:flex-row gap-4 mt-1">
           <div className="flex-1">
-            <span className="text-xs text-muted-foreground">Minimum</span>
+            <span className="text-xs text-label">Minimum</span>
             <Input
               type="text"
               inputMode="numeric"
@@ -363,7 +363,7 @@ export function NodeInfoForm({
             />
           </div>
           <div className="flex-1">
-            <span className="text-xs text-muted-foreground">Maximum</span>
+            <span className="text-xs text-label">Maximum</span>
             <Input
               type="text"
               inputMode="numeric"
@@ -384,7 +384,7 @@ export function NodeInfoForm({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
+              className="w-full justify-between px-0 text-sm font-medium text-foreground hover:text-foreground"
             >
               Contact Info{contacts.length > 0 ? ` (${contacts.length})` : ''}
               <ChevronRight
@@ -493,7 +493,7 @@ export function NodeInfoForm({
             <Button
               variant="ghost"
               size="sm"
-              className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
+              className="w-full justify-between px-0 text-sm font-medium text-foreground hover:text-foreground"
             >
               Custom Records{customRecords.length > 0 ? ` (${customRecords.length})` : ''}
               <ChevronRight

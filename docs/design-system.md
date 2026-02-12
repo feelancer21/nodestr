@@ -75,6 +75,7 @@ Complete design system documentation for the nodestr project. This is the author
 - `bg-background` - Page background
 - `bg-card` - Card backgrounds
 - `bg-muted` - Subtle emphasis areas
+- `bg-input-background` - Input/textarea field backgrounds (subtle contrast from page background)
 
 ### Border Colors
 
