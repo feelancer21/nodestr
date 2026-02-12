@@ -154,10 +154,13 @@ export function MobileHeader() {
               <div className="shrink-0 pt-6 space-y-6 border-t border-slate-200 dark:border-white/10 mt-auto">
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                   {currentUser ? (
-                    <AccountSwitcher onAddAccountClick={() => {
-                      setLoginOpen(true);
-                      setMobileMenuOpen(false);
-                    }} />
+                    <AccountSwitcher
+                      onAddAccountClick={() => {
+                        setLoginOpen(true);
+                        setMobileMenuOpen(false);
+                      }}
+                      onNavigate={() => setMobileMenuOpen(false)}
+                    />
                   ) : (
                     <Button className="w-full justify-start" onClick={() => {
                       setLoginOpen(true);

@@ -17,9 +17,10 @@ import { pubkeyToColor } from '@/lib/utils';
 
 interface AccountSwitcherProps {
   onAddAccountClick?: () => void;
+  onNavigate?: () => void;
 }
 
-export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
+export function AccountSwitcher({ onAddAccountClick, onNavigate }: AccountSwitcherProps) {
   const { currentUser, otherUsers, setLogin } = useLoggedInAccounts();
   const login = useLoginActions();
   const navigate = useNavigate();
@@ -53,7 +54,10 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem
-          onClick={() => navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`)}
+          onClick={() => {
+            navigate(`/profile/${nip19.npubEncode(currentUser.pubkey)}`);
+            onNavigate?.();
+          }}
           className="flex items-center gap-3 cursor-pointer"
         >
           <User className="w-4 h-4" />
