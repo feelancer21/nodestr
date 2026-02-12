@@ -351,6 +351,19 @@ When users specify color schemes:
 
 ---
 
+## Scrollbar Styling
+
+Global slim scrollbar styling is defined in `src/index.css` and applies to ALL native scrollbars automatically. No per-component scrollbar CSS is needed.
+
+**Rules:**
+- **Do NOT add inline scrollbar styles** — the global CSS handles everything
+- **Use `overflow-auto` or `overflow-y-auto`** for scrollable containers — they get slim scrollbars automatically
+- **Use Radix `ScrollArea`** only when programmatic scroll control is needed (e.g., auto-scroll to bottom in chat)
+- **Never use `scrollbar-width: none` or `::-webkit-scrollbar { display: none }`** to hide scrollbars — users need scroll affordance
+- Scrollbar thumb uses `--border` color (adapts to light/dark theme automatically)
+
+---
+
 ## Component Styling Patterns
 
 - Use `cn()` utility for conditional class merging

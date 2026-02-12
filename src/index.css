@@ -7,6 +7,29 @@
   html {
     scrollbar-gutter: stable;
   }
+
+  /* Slim scrollbars — matches Radix ScrollArea thumb styling */
+  * {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: hsl(var(--border)) transparent; /* Firefox: thumb track */
+  }
+
+  /* WebKit (Chrome, Safari, Edge) */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
