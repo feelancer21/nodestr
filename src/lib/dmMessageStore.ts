@@ -28,6 +28,8 @@ export interface MessageStore {
     nip4: number | null;
     nip17: number | null;
   };
+  /** Set to true after loadOlderMessages fetches full history (since: 0) */
+  hasLoadedFullHistory?: boolean;
 }
 
 // ============================================================================

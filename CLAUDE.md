@@ -638,6 +638,15 @@ const channels = node.channels ?? 0;
 const capacity = node.capacity.toLocaleString(); // TypeError if null
 ```
 
+### State Persistence Awareness
+
+When modifying UI state flags that influence user-facing behavior (e.g., `canLoadOlder`, `hasSeenOnboarding`), always consider:
+- **Does this state survive a page refresh (F5)?** If the flag is React state only, it resets on reload.
+- **Should it survive a page refresh?** If the flag represents a completed user action (e.g., "user already loaded full history"), it **must** be persisted (localStorage, IndexedDB, or within the existing cache structure).
+- **What was the previous persistence behavior?** Changing the conditions under which a flag is set may require adding persistence that wasn't needed before.
+
+**Rule:** Before changing any state-setting logic, trace the full lifecycle: initial value -> when set -> when cleared -> what happens on F5/reload. If the change introduces a regression on reload, add persistence.
+
 ### Clipboard API (Requires Fallback)
 
 `navigator.clipboard.writeText()` only works in **secure contexts** (HTTPS or localhost). Every copy-to-clipboard implementation **must** include a `document.execCommand('copy')` fallback. Reference: `src/components/clip/CopyButton.tsx`.

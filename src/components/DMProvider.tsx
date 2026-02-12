@@ -210,6 +210,10 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const nip17SubscriptionRef = useRef<{ close: () => void } | null>(null);
   const debouncedWriteRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Tracks whether the user has already performed a full-history load (since: 0).
+  // Persisted in the IndexedDB cache so it survives page refreshes.
+  const hasLoadedFullHistoryRef = useRef(false);
+
   // Epoch counter — incremented on each user switch to discard stale async operations
   const userEpochRef = useRef(0);
 
@@ -244,6 +248,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setScanProgress({ nip4: null, nip17: null });
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
+      hasLoadedFullHistoryRef.current = false;
     }
   }, [userPubkey]);
 
@@ -1262,6 +1267,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
         return {};
       }
 
+      // Restore persisted full-history flag from cache
+      if (cachedStore.hasLoadedFullHistory) {
+        hasLoadedFullHistoryRef.current = true;
+      }
+
       const filteredParticipants = enableNIP17
         ? cachedStore.participants
         : Object.fromEntries(
@@ -1371,9 +1381,6 @@ export function DMProvider({ children, config }: DMProviderProps) {
         ? ({} as { nip4Since?: number; nip17Since?: number })
         : await loadAllCachedMessages();
 
-      // Determine if this is a fresh load (no cache existed)
-      const isFreshLoad = nip4Since === undefined && nip17Since === undefined;
-
       // Mark as completed BEFORE releasing isLoading to prevent re-trigger
       setHasInitialLoadCompleted(true);
 
@@ -1395,8 +1402,12 @@ export function DMProvider({ children, config }: DMProviderProps) {
         setShouldSaveImmediately(true);
       }
 
-      // If this was a fresh load (no cache), offer to load older messages
-      if (isFreshLoad) {
+      // Offer to load older messages unless a full-history fetch has already
+      // been performed (persisted in cache via hasLoadedFullHistory flag).
+      // The 30-day relay fetch window means there may be older messages beyond
+      // the window — regardless of whether messages came from cache or relays.
+      // loadOlderMessages() sets canLoadOlder=false and persists the flag.
+      if (!hasLoadedFullHistoryRef.current) {
         setCanLoadOlder(true);
       }
 
@@ -1445,6 +1456,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setIsLoading(false);
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
+      hasLoadedFullHistoryRef.current = false;
 
       // Trigger reload by setting hasInitialLoadCompleted to false
       setHasInitialLoadCompleted(false);
@@ -1468,11 +1480,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
       ]);
 
       const totalOlderMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
-      if (totalOlderMessages > 0) {
-        setShouldSaveImmediately(true);
-      }
 
+      // Mark full history as loaded and persist to cache
+      hasLoadedFullHistoryRef.current = true;
       setCanLoadOlder(false);
+      setShouldSaveImmediately(true);
     } catch (error) {
       console.error('[DM] Error loading older messages:', error);
     } finally {
@@ -1651,7 +1663,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
         lastSync: {
           nip4: lastSync.nip4,
           nip17: lastSync.nip17,
-        }
+        },
+        hasLoadedFullHistory: hasLoadedFullHistoryRef.current,
       };
 
       messages.forEach((participant, participantPubkey) => {
