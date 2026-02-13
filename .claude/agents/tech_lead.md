@@ -206,12 +206,12 @@ Before addressing findings, the Technical Lead performs a structured process ret
 
 - If **YES**:
   - Formulate the new guidance as a general, reusable principle
-  - **Determine the correct target file** by checking the Context Routing Map in `CLAUDE.md`. Parts of the project documentation have been extracted to dedicated files in `docs/`:
-    - `docs/design-system.md` — UI/design patterns, typography, component styling
-    - `docs/nostr-patterns.md` — Nostr integration patterns, query design, security model
-    - `docs/clip-reference.md` — CLIP protocol Go reference (read-only, do not modify)
-  - **If the finding matches an extracted doc's scope**: append the guidance to that doc file
-  - **If the finding is cross-cutting or does not match any extracted doc**: append to `CLAUDE.md` under the appropriate section
+  - **Determine the correct target file** by checking the Context Routing Map in `CLAUDE.md`. Parts of the project documentation have been extracted to skills (`.claude/skills/<name>/SKILL.md`):
+    - `/design-system` skill — UI/design patterns, typography, component styling
+    - `/nostr-patterns` skill — Nostr integration patterns, query design, security model
+    - `/clip-reference` skill — CLIP protocol Go reference (read-only, do not modify)
+  - **If the finding matches a skill's scope**: append the guidance to that skill's `SKILL.md`
+  - **If the finding is cross-cutting or does not match any skill**: append to `CLAUDE.md` under the appropriate section
   - Inform the Product Owner:
     - What was added
     - To which file and under which section

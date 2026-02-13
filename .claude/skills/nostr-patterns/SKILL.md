@@ -1,3 +1,8 @@
+---
+name: nostr-patterns
+description: Implement Nostr protocol features, query events, publish events, handle NIP-19 identifiers, use hooks, or integrate with the Nostr relay network.
+---
+
 # Nostr Integration Patterns
 
 This document contains Nostr protocol integration patterns, security model guidance, and development patterns for this project. It is the reference for all Nostr-specific implementation details that are not CLIP-specific.

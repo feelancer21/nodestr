@@ -1,3 +1,8 @@
+---
+name: design-system
+description: Build or modify UI components, style pages, apply theming, use typography, colors, loading states, or any visual/layout work.
+---
+
 # Design System
 
 Complete design system documentation for the nodestr project. This is the authoritative reference for all visual standards, component patterns, and styling decisions.

@@ -1,3 +1,8 @@
+---
+name: clip-reference
+description: Work with CLIP protocol implementation, validate Lightning signatures, modify event handling, or change trust semantics. Reference the Go implementation for correctness.
+---
+
 # CLIP Protocol Go Reference Code
 
 This document contains the authoritative Go reference implementation for the CLIP (Common Lightning-node Information Payload) protocol. The TypeScript implementation in this project must **strictly mirror** the behavior of this code.

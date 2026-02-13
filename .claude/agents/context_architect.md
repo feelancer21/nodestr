@@ -190,8 +190,8 @@ Example format:
 
 | Task Type | Start Here | Reference Docs | Directory CLAUDE.md |
 |-----------|-----------|---------------|---------------------|
-| UI / Components | src/components/ | docs/design-system.md | src/components/CLAUDE.md |
-| Protocol Logic | src/lib/clip*.ts | docs/clip-protocol.md | src/lib/CLAUDE.md |
+| UI / Components | src/components/ | `/design-system` skill | src/components/CLAUDE.md |
+| Protocol Logic | src/lib/clip*.ts | `/clip-reference` skill | src/lib/CLAUDE.md |
 | Relay System | src/lib/relay*.ts | — | src/lib/CLAUDE.md |
 | Hooks / Data | src/hooks/ | — | src/hooks/CLAUDE.md |
 
@@ -201,7 +201,7 @@ The routing map replaces verbose inline explanations with concise pointers. Agen
 
 ### C. Split Auto-Loaded Files into Core + Reference
 
-When an auto-loaded file contains large sections that are only relevant to specific task types, consider moving those sections to reference files loaded on demand. Keep a pointer in the auto-loaded file (e.g., "For protocol details, see `docs/protocol.md`").
+When an auto-loaded file contains large sections that are only relevant to specific task types, consider moving those sections to skills (`.claude/skills/<name>/SKILL.md`) loaded on demand. Keep a pointer in the auto-loaded file (e.g., "For protocol details, see `/clip-reference` skill").
 
 What stays in auto-loaded files:
 - Project identity and quick start commands

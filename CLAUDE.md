@@ -496,7 +496,7 @@ DMProvider                  IndexedDB (health metadata only)
 
 ## Design System
 
-Full design system documentation: [`docs/design-system.md`](./docs/design-system.md)
+Full design system documentation: `/design-system` skill
 
 **Key rules** (always apply):
 - Use CSS custom properties, never direct slate colors
@@ -569,7 +569,7 @@ npm run test
 
 ### MUST Follow
 
-- **Do NOT guess protocol details** — Refer to Go reference in `docs/clip-reference.md`
+- **Do NOT guess protocol details** — Refer to Go reference via `/clip-reference` skill
 - **Do NOT invent NIPs or CLIP extensions** — Strict Go compatibility required
 - **Keep app runnable at all times** — Every change ends with working app
 
@@ -577,7 +577,7 @@ npm run test
 
 The CLIP implementation must **strictly mirror** the Go reference.
 
-**Reference code**: `docs/clip-reference.md` (event.go, client.go, store.go, payloads.go)
+**Reference code**: `/clip-reference` skill (event.go, client.go, store.go, payloads.go)
 
 **Key behaviors**:
 - Latest announcement wins (by `created_at`)
@@ -598,7 +598,7 @@ The CLIP implementation must **strictly mirror** the Go reference.
 - Verify events with `verifyClipEvent()` before storing
 - Store verified events in `ClipStore` to enforce trust semantics
 - Use `TestApp` wrapper for all component tests
-- Reference Go files for protocol details (`docs/clip-reference.md`)
+- Reference Go files for protocol details (`/clip-reference` skill)
 - **UI Components**: Before creating new components, analyze existing similar components for consistent formatting (typography, spacing, colors)
 - **Reference-First Development**: When building pages similar to existing ones (e.g., Node Page similar to OperatorProfile), read and mirror the existing implementation
 
@@ -771,10 +771,10 @@ Always create descriptive commit messages when work is complete.
 | Relay Management | `src/components/RelayHealthProvider.tsx` | CLAUDE.md "Relay Management" |
 | Node Discovery | `src/pages/SearchPage.tsx` | `useMempoolSearch.ts` |
 | Direct Messages | `src/components/DMProvider.tsx` | `/nostr-direct-messages` skill |
-| UI / Design | `src/components/ui/` | `docs/design-system.md` |
+| UI / Design | `src/components/ui/` | `/design-system` skill |
 | Provider Stack | `src/App.tsx` | CLAUDE.md "Provider Stack" |
-| Nostr Patterns | — | `docs/nostr-patterns.md` |
-| CLIP Go Reference | — | `docs/clip-reference.md` |
+| Nostr Patterns | — | `/nostr-patterns` skill |
+| CLIP Go Reference | — | `/clip-reference` skill |
 
 ### Important Constants
 - CLIP event kind: `38171`
@@ -799,6 +799,6 @@ Always create descriptive commit messages when work is complete.
 ## Additional Resources
 
 - **CHANGELOG.md** — Phase completion history and recent changes
-- `docs/clip-reference.md` — CLIP protocol Go reference code (event.go, store.go, client.go, payloads.go)
-- `docs/nostr-patterns.md` — Nostr integration patterns, security model, query design
-- `docs/design-system.md` — Complete design system and visual standards
+- `/clip-reference` skill — CLIP protocol Go reference code (event.go, store.go, client.go, payloads.go)
+- `/nostr-patterns` skill — Nostr integration patterns, security model, query design
+- `/design-system` skill — Complete design system and visual standards
