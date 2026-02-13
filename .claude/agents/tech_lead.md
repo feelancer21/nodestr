@@ -196,20 +196,25 @@ Before addressing findings, the Technical Lead performs a structured process ret
 
 ---
 
-**Question 3: Project-Wide Guidance Gap (CLAUDE.md)**
-> Could a general-purpose, project-wide addition to `claude.md` have prevented this finding?
+**Question 3: Project-Wide Guidance Gap**
+> Could a general-purpose, project-wide addition to the project documentation have prevented this finding?
 
 **Constraints – only add guidance that:**
 - Applies **across all features** of this project (not feature-specific)
 - Is a reusable principle, pattern, or constraint
-- Does not duplicate existing content in `claude.md`
+- Does not duplicate existing content
 
 - If **YES**:
   - Formulate the new guidance as a general, reusable principle
-  - **Append it to `claude.md`** under the appropriate section
+  - **Determine the correct target file** by checking the Context Routing Map in `CLAUDE.md`. Parts of the project documentation have been extracted to dedicated files in `docs/`:
+    - `docs/design-system.md` — UI/design patterns, typography, component styling
+    - `docs/nostr-patterns.md` — Nostr integration patterns, query design, security model
+    - `docs/clip-reference.md` — CLIP protocol Go reference (read-only, do not modify)
+  - **If the finding matches an extracted doc's scope**: append the guidance to that doc file
+  - **If the finding is cross-cutting or does not match any extracted doc**: append to `CLAUDE.md` under the appropriate section
   - Inform the Product Owner:
     - What was added
-    - Under which section
+    - To which file and under which section
     - Why this prevents similar findings in the future
 - If **NO**: No process change needed
 
