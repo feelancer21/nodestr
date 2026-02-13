@@ -16,6 +16,7 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     setupFiles: path.resolve(__dirname, './src/test/setup.ts'),
+    exclude: ['worktree-*/**', 'node_modules/**'],
     onConsoleLog(log) {
       return !log.includes("React Router Future Flag Warning");
     },
