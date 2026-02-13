@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CopyButton } from '@/components/clip/CopyButton';
 import { cn, formatNumber } from '@/lib/utils';
 import type { MempoolNode, Network } from '@/types/search';
-import { useSearch } from '@/contexts/SearchContext';
+import { useSearch } from '@/hooks/useSearch';
 
 interface NodeCardProps {
   node: MempoolNode;

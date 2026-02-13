@@ -1479,7 +1479,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
         enableNIP17 ? queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP17, 0) : Promise.resolve({ lastMessageTimestamp: undefined, messageCount: 0 })
       ]);
 
-      const totalOlderMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
+      const _totalOlderMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
 
       // Mark full history as loaded and persist to cache
       hasLoadedFullHistoryRef.current = true;

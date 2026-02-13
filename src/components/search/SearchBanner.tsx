@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { Card } from '@/components/ui/card';
 import { NetworkSelector } from './NetworkSelector';
 import { QuickSearchItem } from './QuickSearchItem';
-import { useSearch, useSearchState } from '@/contexts/SearchContext';
+import { useSearch, useSearchState } from '@/hooks/useSearch';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { isValidLightningPubkey, pubkeyAlias } from '@/lib/lightning';

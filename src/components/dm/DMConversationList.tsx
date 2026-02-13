@@ -4,7 +4,7 @@ import { nip19 } from 'nostr-tools';
 import { CheckCheck, Info, Loader2 } from 'lucide-react';
 import { useDMContext } from '@/hooks/useDMContext';
 import { useAuthor } from '@/hooks/useAuthor';
-import { useUnread } from '@/contexts/UnreadContext';
+import { useUnread } from '@/hooks/useUnread';
 import { genUserName } from '@/lib/genUserName';
 import { formatConversationTime, formatFullDateTime } from '@/lib/dmUtils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

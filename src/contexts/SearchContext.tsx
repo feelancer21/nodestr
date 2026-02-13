@@ -1,22 +1,7 @@
-import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
+import { SearchContext } from '@/contexts/SearchContext.internal';
+import type { SearchState } from '@/contexts/SearchContext.internal';
 import type { Network } from '@/types/search';
-
-interface SearchState {
-  query: string;
-  network: Network;
-  isSearchPageActive: boolean;
-}
-
-interface SearchActions {
-  setQuery: (query: string) => void;
-  setNetwork: (network: Network) => void;
-  setSearchPageActive: (active: boolean) => void;
-  reset: () => void;
-}
-
-interface SearchContextType extends SearchState, SearchActions {}
-
-const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 const DEFAULT_STATE: SearchState = {
   query: '',
@@ -59,35 +44,4 @@ export function SearchProvider({ children }: SearchProviderProps) {
   );
 
   return <SearchContext.Provider value={value}>{children}</SearchContext.Provider>;
-}
-
-/**
- * Hook for accessing search actions (setQuery, setNetwork, etc.)
- */
-export function useSearch(): SearchActions {
-  const context = useContext(SearchContext);
-  if (!context) {
-    throw new Error('useSearch must be used within a SearchProvider');
-  }
-  return {
-    setQuery: context.setQuery,
-    setNetwork: context.setNetwork,
-    setSearchPageActive: context.setSearchPageActive,
-    reset: context.reset,
-  };
-}
-
-/**
- * Hook for accessing readonly search state
- */
-export function useSearchState(): SearchState {
-  const context = useContext(SearchContext);
-  if (!context) {
-    throw new Error('useSearchState must be used within a SearchProvider');
-  }
-  return {
-    query: context.query,
-    network: context.network,
-    isSearchPageActive: context.isSearchPageActive,
-  };
 }

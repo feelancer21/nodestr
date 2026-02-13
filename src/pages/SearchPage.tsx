@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchBanner } from '@/components/search/SearchBanner';
 import { SearchResultPair } from '@/components/search/SearchResultPair';
-import { useSearch, useSearchState } from '@/contexts/SearchContext';
+import { useSearch, useSearchState } from '@/hooks/useSearch';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useMempoolSearch } from '@/hooks/useMempoolSearch';
 import { useClipAnnouncementLookup } from '@/hooks/useClipAnnouncementLookup';

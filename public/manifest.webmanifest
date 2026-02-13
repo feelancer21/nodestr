@@ -1,0 +1,16 @@
+{
+  "name": "nodestr",
+  "short_name": "nodestr",
+  "description": "A browser-only Nostr client for Lightning node operators.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020817",
+  "theme_color": "#FF8C00",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><path d='M50 10 L61 40 L92 40 L67 60 L78 90 L50 70 L22 90 L33 60 L8 40 L39 40 Z' fill='%23FF8C00' stroke='%23FF6B00' stroke-width='1.5'/></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

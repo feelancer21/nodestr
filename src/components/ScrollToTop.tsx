@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useSearch } from '@/contexts/SearchContext';
+import { useSearch } from '@/hooks/useSearch';
 
 export function ScrollToTop() {
   const { pathname } = useLocation();

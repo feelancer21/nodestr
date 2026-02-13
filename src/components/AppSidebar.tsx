@@ -9,7 +9,7 @@ import { useLoggedInAccounts } from '@/hooks/useLoggedInAccounts';
 import { useLoginActions } from '@/hooks/useLoginActions';
 import { cn, pubkeyToColor } from '@/lib/utils';
 import { genUserName } from '@/lib/genUserName';
-import { useUnreadSafe } from '@/contexts/UnreadContext';
+import { useUnreadSafe } from '@/hooks/useUnread';
 import LoginDialog from '@/components/auth/LoginDialog';
 import SignupDialog from '@/components/auth/SignupDialog';
 

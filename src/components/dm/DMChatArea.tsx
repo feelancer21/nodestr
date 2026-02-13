@@ -21,7 +21,7 @@ import { NoteContent } from '@/components/NoteContent';
 import { MessageContent } from '@/components/dm/MessageContent';
 import { DMViewSourceModal } from '@/components/dm/DMViewSourceModal';
 import { ForwardMessageDialog } from '@/components/dm/ForwardMessageDialog';
-import { useUnreadSafe } from '@/contexts/UnreadContext';
+import { useUnreadSafe } from '@/hooks/useUnread';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 interface DMChatAreaProps {
