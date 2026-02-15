@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn, pubkeyToColor } from '@/lib/utils';
+import { cn, pubkeyToColor, formatNumber } from '@/lib/utils';
 import { LOADING_PHASES } from '@/lib/dmConstants';
 
 interface DMConversationListProps {
@@ -167,7 +167,7 @@ export const DMConversationList = ({
   onStatusClick,
   drafts,
 }: DMConversationListProps) => {
-  const { conversations, isLoading, loadingPhase, canLoadOlder, isLoadingOlder, loadOlderMessages } = useDMContext();
+  const { conversations, isLoading, loadingPhase, canLoadOlder, isLoadingOlder, loadOlderMessages, olderMessagesCount } = useDMContext();
   const { unreadCounts, totalUnread, markAllAsRead } = useUnread();
 
   const isInitialLoad = (loadingPhase === LOADING_PHASES.CACHE || loadingPhase === LOADING_PHASES.RELAYS) && conversations.length === 0;
@@ -272,10 +272,12 @@ export const DMConversationList = ({
                   {isLoadingOlder ? (
                     <>
                       <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                      Loading older messages...
+                      Loading older conversations...
                     </>
+                  ) : olderMessagesCount ? (
+                    `Load older conversations (~${formatNumber(olderMessagesCount.count)} more messages)`
                   ) : (
-                    'Load older messages'
+                    'Load older conversations'
                   )}
                 </Button>
               </div>

@@ -141,6 +141,7 @@ export interface DMContextType {
   clearCacheAndRefetch: () => Promise<void>;
   canLoadOlder: boolean;
   isLoadingOlder: boolean;
+  olderMessagesCount: { count: number; approximate: boolean } | null;
   loadOlderMessages: () => Promise<void>;
   loadConversationFromRelay: (partnerPubkey: string) => Promise<number>;
   getConversationMeta: (partnerPubkey: string) => ConversationMeta | undefined;

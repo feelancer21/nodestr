@@ -6,8 +6,9 @@ import { useAppContext } from '@/hooks/useAppContext';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useToast } from '@/hooks/useToast';
 import { validateDMEvent } from '@/lib/dmUtils';
+import { useRelayHealth } from '@/hooks/useRelayHealth';
 import { LOADING_PHASES, type LoadingPhase, PROTOCOL_MODE, type ProtocolMode } from '@/lib/dmConstants';
-import { NSecSigner, NPool, type NostrEvent } from '@nostrify/nostrify';
+import { NSecSigner, NPool, type NostrEvent, type NostrFilter } from '@nostrify/nostrify';
 import { generateSecretKey, getEventHash, verifyEvent } from 'nostr-tools';
 import type { MessageProtocol } from '@/lib/dmConstants';
 import { MESSAGE_PROTOCOL } from '@/lib/dmConstants';
@@ -173,6 +174,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const { mutateAsync: createEvent } = useNostrPublish();
   const { toast } = useToast();
   const { config: appConfig } = useAppContext();
+  const { healthData } = useRelayHealth();
 
   const userPubkey = useMemo(() => user?.pubkey, [user?.pubkey]);
 
@@ -201,6 +203,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   });
   const [canLoadOlder, setCanLoadOlder] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [olderMessagesCount, setOlderMessagesCount] = useState<{ count: number; approximate: boolean } | null>(null);
   const [conversationMeta, setConversationMeta] = useState<Map<string, ConversationMeta>>(new Map());
   const [oldestNip17GiftWrapTimestamp, setOldestNip17GiftWrapTimestamp] = useState<number | null>(null);
   const [hasReachedNip17RelayEnd, setHasReachedNip17RelayEnd] = useState(false);
@@ -247,6 +250,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setScanProgress({ nip4: null, nip17: null });
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
+      setOlderMessagesCount(null);
       setConversationMeta(new Map());
       setOldestNip17GiftWrapTimestamp(null);
       setHasReachedNip17RelayEnd(false);
@@ -1077,7 +1081,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   // Helper: subscribe to individual relays using NRelay1.req() which stays open after EOSE
   // NPool.req() aborts after eoseTimeout (1s), so we must use relay-level subscriptions
   const subscribeToRelays = useCallback((
-    filters: import('@nostrify/nostrify').NostrFilter[],
+    filters: NostrFilter[],
     onEvent: (event: NostrEvent) => Promise<void>,
     label: string,
   ): { close: () => void } => {
@@ -1368,6 +1372,70 @@ export function DMProvider({ children, config }: DMProviderProps) {
       // loadOlderMessages() sets canLoadOlder=false and persists the flag.
       if (!hasLoadedFullHistoryRef.current) {
         setCanLoadOlder(true);
+
+        // Background NIP-45 COUNT estimation (fire-and-forget)
+        // Tries to estimate how many older messages exist beyond the initial fetch window
+        (async () => {
+          try {
+            const pool = nostr as NPool;
+            const readRelayUrls = appConfig.relayMetadata.relays
+              .filter(r => r.read)
+              .map(r => r.url);
+
+            // Find the oldest loaded message timestamp across all messages
+            let oldestTimestamp: number | null = null;
+            messages.forEach((participant) => {
+              for (const msg of participant.messages) {
+                if (oldestTimestamp === null || msg.created_at < oldestTimestamp) {
+                  oldestTimestamp = msg.created_at;
+                }
+              }
+            });
+
+            // If no messages loaded, nothing to count older than
+            if (oldestTimestamp === null) return;
+
+            // Prioritize relays that advertise NIP-45 support
+            const nip45Relays: string[] = [];
+            const otherRelays: string[] = [];
+            for (const url of readRelayUrls) {
+              const health = healthData.get(url);
+              if (health?.nip11?.supported_nips?.includes(45)) {
+                nip45Relays.push(url);
+              } else {
+                otherRelays.push(url);
+              }
+            }
+            const sortedRelays = [...nip45Relays, ...otherRelays];
+
+            if (sortedRelays.length === 0) return;
+
+            // Try each relay until one responds
+            const countFilters: NostrFilter[] = [
+              { kinds: [4], '#p': [userPubkey!], until: oldestTimestamp },
+              { kinds: [4], authors: [userPubkey!], until: oldestTimestamp },
+              ...(enableNIP17 ? [{ kinds: [1059], '#p': [userPubkey!], until: oldestTimestamp }] : []),
+            ];
+
+            for (const url of sortedRelays) {
+              try {
+                const relay = pool.relay(url);
+                if (!relay.count) continue; // Relay doesn't support NIP-45
+                const result = await relay.count(countFilters, { signal: AbortSignal.timeout(5000) });
+                if (result.count > 0) {
+                  setOlderMessagesCount({ count: result.count, approximate: result.approximate ?? true });
+                  console.log(`[DM] NIP-45 COUNT from ${url}: ~${result.count} older messages`);
+                  return;
+                }
+              } catch {
+                // Relay doesn't support NIP-45 or timed out — try next
+                continue;
+              }
+            }
+          } catch (error) {
+            console.debug('[DM] NIP-45 COUNT estimation failed (non-critical):', error);
+          }
+        })();
       }
 
       // ===== PHASE 3: Setup subscriptions =====
@@ -1389,6 +1457,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setLoadingPhase(LOADING_PHASES.READY);
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadAllCachedMessages, queryRelaysForMessagesSince, startNIP4Subscription, startNIP17Subscription, enableNIP17, isLoading, userPubkey, appConfig.relayMetadata]);
 
   // Clear cache and refetch from relays
@@ -1419,6 +1488,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setIsLoading(false);
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
+      setOlderMessagesCount(null);
       hasLoadedFullHistoryRef.current = false;
 
       // Trigger reload by setting hasInitialLoadCompleted to false
@@ -1429,31 +1499,181 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
   }, [enabled, userPubkey]);
 
-  // Load older messages (fetch all from epoch)
+  // Load older messages with until+limit batching
   const loadOlderMessages = useCallback(async () => {
-    if (isLoadingOlder || !userPubkey) return;
-
+    if (isLoadingOlder || !userPubkey || !nostr) return;
     setIsLoadingOlder(true);
 
     try {
-      // Fetch ALL messages from epoch (since: 0)
-      const [nip4Result, nip17Result] = await Promise.all([
-        queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP04, 0),
-        enableNIP17 ? queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP17, 0) : Promise.resolve({ lastMessageTimestamp: undefined, messageCount: 0 })
-      ]);
+      const epoch = userEpochRef.current;
+      const pool = nostr as NPool;
+      const BATCH_SIZE = 200; // per filter
 
-      const _totalOlderMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
+      // Find oldest timestamps in current state
+      let nip4OldestTimestamp: number | null = null;
+      let nip17OldestTimestamp: number | null = null;
 
-      // Mark full history as loaded and persist to cache
+      messages.forEach((participant) => {
+        for (const msg of participant.messages) {
+          // NIP-04 messages are kind 4
+          if (msg.kind === 4) {
+            if (nip4OldestTimestamp === null || msg.created_at < nip4OldestTimestamp) {
+              nip4OldestTimestamp = msg.created_at;
+            }
+          }
+          // NIP-17 messages have originalGiftWrapId set
+          if (msg.originalGiftWrapId) {
+            if (nip17OldestTimestamp === null || msg.created_at < nip17OldestTimestamp) {
+              nip17OldestTimestamp = msg.created_at;
+            }
+          }
+        }
+      });
+
+      let nip4Done = false;
+      let nip17Done = !enableNIP17;
+      let nip4Until: number | null = nip4OldestTimestamp;
+      let nip17Until: number | null = nip17OldestTimestamp;
+
+      while (!nip4Done || !nip17Done) {
+        const promises: Promise<NostrEvent[]>[] = [];
+
+        // NIP-04 batch
+        if (!nip4Done) {
+          const nip4Filters: NostrFilter[] = [
+            { kinds: [4], '#p': [userPubkey], limit: BATCH_SIZE, ...(nip4Until != null ? { until: nip4Until } : {}) },
+            { kinds: [4], authors: [userPubkey], limit: BATCH_SIZE, ...(nip4Until != null ? { until: nip4Until } : {}) },
+          ];
+          promises.push(
+            pool.query(nip4Filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP4_QUERY_TIMEOUT) })
+          );
+        } else {
+          promises.push(Promise.resolve([]));
+        }
+
+        // NIP-17 batch
+        if (!nip17Done) {
+          const nip17Filters: NostrFilter[] = [
+            { kinds: [1059], '#p': [userPubkey], limit: BATCH_SIZE, ...(nip17Until != null ? { until: nip17Until } : {}) },
+          ];
+          promises.push(
+            pool.query(nip17Filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT) })
+          );
+        } else {
+          promises.push(Promise.resolve([]));
+        }
+
+        const [nip4Events, nip17Events] = await Promise.all(promises);
+
+        // Process NIP-04 messages
+        if (!nip4Done && nip4Events.length > 0) {
+          const validMessages = nip4Events.filter(validateDMEvent);
+
+          if (validMessages.length > 0) {
+            const newState = new Map<string, ParticipantData>();
+
+            for (const message of validMessages) {
+              const isFromUser = message.pubkey === userPubkey;
+              const recipientPTag = message.tags?.find(([name]: string[]) => name === 'p')?.[1];
+              const otherPubkey = isFromUser ? recipientPTag : message.pubkey;
+
+              if (!otherPubkey || otherPubkey === userPubkey) continue;
+
+              const { decryptedContent, error } = await decryptNIP4Message(message, otherPubkey);
+
+              const decryptedMessage: DecryptedMessage = {
+                ...message,
+                content: message.content,
+                decryptedContent,
+                error,
+              };
+
+              if (!newState.has(otherPubkey)) {
+                newState.set(otherPubkey, createEmptyParticipant());
+              }
+
+              const participant = newState.get(otherPubkey)!;
+              participant.messages.push(decryptedMessage);
+              participant.hasNIP4 = true;
+            }
+
+            newState.forEach(participant => {
+              sortAndUpdateParticipantState(participant);
+            });
+
+            mergeMessagesIntoState(newState, epoch);
+
+            // Update cursor to oldest in this batch
+            const oldest = validMessages.reduce((min, e) => e.created_at < min ? e.created_at : min, validMessages[0].created_at);
+            nip4Until = oldest - 1; // -1 to avoid refetching same event
+          }
+        }
+        if (!nip4Done && nip4Events.length < BATCH_SIZE) {
+          nip4Done = true;
+        }
+
+        // Process NIP-17 messages
+        if (!nip17Done && nip17Events.length > 0) {
+          const newState = new Map<string, ParticipantData>();
+
+          for (const giftWrap of nip17Events) {
+            try {
+              const { processedMessage, conversationPartner, sealEvent } = await processNIP17GiftWrap(giftWrap);
+
+              // Skip messages with decryption errors
+              if (processedMessage.error) {
+                continue;
+              }
+
+              const messageForState: DecryptedMessage = {
+                ...sealEvent,
+                created_at: processedMessage.created_at,
+                decryptedEvent: {
+                  ...processedMessage,
+                  content: processedMessage.decryptedContent,
+                } as NostrEvent,
+                decryptedContent: processedMessage.decryptedContent,
+                originalGiftWrapId: giftWrap.id,
+              };
+
+              if (!newState.has(conversationPartner)) {
+                newState.set(conversationPartner, createEmptyParticipant());
+              }
+
+              newState.get(conversationPartner)!.messages.push(messageForState);
+              newState.get(conversationPartner)!.hasNIP17 = true;
+            } catch (error) {
+              console.error('[DM] Error processing gift wrap during older load:', error);
+            }
+          }
+
+          newState.forEach(participant => {
+            sortAndUpdateParticipantState(participant);
+          });
+
+          mergeMessagesIntoState(newState, epoch);
+
+          // Update cursor
+          const oldest = nip17Events.reduce((min, e) => e.created_at < min ? e.created_at : min, nip17Events[0].created_at);
+          nip17Until = oldest - 1;
+        }
+        if (!nip17Done && nip17Events.length < BATCH_SIZE) {
+          nip17Done = true;
+        }
+
+        if (nip4Events.length === 0 && nip17Events.length === 0) break;
+      }
+
       hasLoadedFullHistoryRef.current = true;
       setCanLoadOlder(false);
+      setOlderMessagesCount(null);
       setShouldSaveImmediately(true);
     } catch (error) {
-      console.error('[DM] Error loading older messages:', error);
+      console.error('[DM] Error loading older conversations:', error);
     } finally {
       setIsLoadingOlder(false);
     }
-  }, [isLoadingOlder, userPubkey, queryRelaysForMessagesSince, enableNIP17]);
+  }, [isLoadingOlder, userPubkey, nostr, messages, enableNIP17, decryptNIP4Message, createEmptyParticipant, sortAndUpdateParticipantState, mergeMessagesIntoState, processNIP17GiftWrap]);
 
   // Load conversation from relay (per-chat pagination)
   const loadConversationFromRelay = useCallback(async (partnerPubkey: string): Promise<number> => {
@@ -1906,6 +2126,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
     clearCacheAndRefetch,
     canLoadOlder,
     isLoadingOlder,
+    olderMessagesCount,
     loadOlderMessages,
     loadConversationFromRelay,
     getConversationMeta,
