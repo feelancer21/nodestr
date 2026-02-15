@@ -358,7 +358,7 @@ AutoGrowTextarea.displayName = 'AutoGrowTextarea';
 export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMChatAreaProps) => {
   const { user } = useCurrentUser();
   const { sendMessage, isLoading } = useDMContext();
-  const { messages, hasMoreMessages, loadEarlierMessages } = useConversationMessages(pubkey || '');
+  const { messages, hasMoreCached, hasMoreOnRelay, isLoadingFromRelay, loadMoreCached, loadFromRelay } = useConversationMessages(pubkey || '');
   const { markAsRead } = useUnreadSafe();
 
   const [messageText, setMessageText] = useState('');
@@ -372,6 +372,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
   const draftsRef = useRef<Map<string, string>>(loadDrafts());
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Track resolved emoticons for undo: emoji string → original emoticon
@@ -525,7 +526,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     }
   }, [handleSend, isMobile]);
 
-  const handleLoadMore = useCallback(async () => {
+  const handleLoadMoreCached = useCallback(async () => {
     if (!scrollAreaRef.current || isLoadingMore) return;
 
     const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -535,7 +536,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     const previousScrollTop = scrollContainer.scrollTop;
 
     setIsLoadingMore(true);
-    loadEarlierMessages();
+    loadMoreCached();
 
     setTimeout(() => {
       if (scrollContainer) {
@@ -545,7 +546,23 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
       }
       setIsLoadingMore(false);
     }, 0);
-  }, [loadEarlierMessages, isLoadingMore]);
+  }, [loadMoreCached, isLoadingMore]);
+
+  // IntersectionObserver for auto-loading cached messages
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (!sentinel || !viewport) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && hasMoreCached && !isLoadingMore) {
+        handleLoadMoreCached();
+      }
+    }, { root: viewport, threshold: 0.1 });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreCached, isLoadingMore, handleLoadMoreCached]);
 
   const handleReply = useCallback((data: ReplyTo) => {
     setReplyTo(data);
@@ -618,22 +635,26 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
             </div>
           ) : (
             <>
-              {hasMoreMessages && (
+              {/* Sentinel for IntersectionObserver auto-loading from cache */}
+              <div ref={sentinelRef} className="h-1" />
+
+              {/* "Load earlier messages" button — only when cache exhausted and relay has more */}
+              {!hasMoreCached && hasMoreOnRelay && (
                 <div className="flex justify-center mb-4">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleLoadMore}
-                    disabled={isLoadingMore}
+                    onClick={loadFromRelay}
+                    disabled={isLoadingFromRelay}
                     className="text-xs"
                   >
-                    {isLoadingMore ? (
+                    {isLoadingFromRelay ? (
                       <>
                         <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                        Loading...
+                        Loading from relays...
                       </>
                     ) : (
-                      'Load Earlier Messages'
+                      'Load earlier messages'
                     )}
                   </Button>
                 </div>

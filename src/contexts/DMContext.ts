@@ -37,6 +37,12 @@ interface ScanProgressState {
   nip17: ScanProgress | null;
 }
 
+export interface ConversationMeta {
+  oldestNip4Timestamp: number | null;   // Cursor for NIP-04 per-partner pagination
+  hasReachedNip4End: boolean;           // NIP-04 relay returned < limit for this partner
+  isLoadingFromRelay: boolean;          // Currently fetching from relay
+}
+
 interface ConversationSummary {
   id: string;
   pubkey: string;
@@ -136,6 +142,9 @@ export interface DMContextType {
   canLoadOlder: boolean;
   isLoadingOlder: boolean;
   loadOlderMessages: () => Promise<void>;
+  loadConversationFromRelay: (partnerPubkey: string) => Promise<number>;
+  getConversationMeta: (partnerPubkey: string) => ConversationMeta | undefined;
+  hasReachedNip17RelayEnd: boolean;
 }
 
 export const DMContext = createContext<DMContextType | null>(null);

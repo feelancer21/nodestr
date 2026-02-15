@@ -3,85 +3,57 @@ import { useDMContext } from "@/hooks/useDMContext";
 
 const MESSAGES_PER_PAGE = 25;
 
-/**
- * Hook to access paginated messages for a specific conversation.
- * 
- * Returns the most recent messages (default 25) with the ability to load earlier messages.
- * Automatically resets to default page size when switching conversations.
- * 
- * @example
- * ```tsx
- * import { useConversationMessages } from '@/contexts/DMContext';
- * 
- * function MessageThread({ recipientPubkey }: { recipientPubkey: string }) {
- *   const { 
- *     messages, 
- *     hasMoreMessages, 
- *     loadEarlierMessages,
- *     totalCount 
- *   } = useConversationMessages(recipientPubkey);
- * 
- *   return (
- *     <div>
- *       {hasMoreMessages && (
- *         <button onClick={loadEarlierMessages}>
- *           Load Earlier ({totalCount - messages.length} more)
- *         </button>
- *       )}
- *       {messages.map(msg => (
- *         <div key={msg.id}>{msg.decryptedContent}</div>
- *       ))}
- *     </div>
- *   );
- * }
- * ```
- * 
- * @param conversationId - The pubkey of the conversation participant
- * @returns Paginated message data with loading function
- */
 export function useConversationMessages(conversationId: string) {
-  const { messages: allMessages } = useDMContext();
+  const { messages: allMessages, loadConversationFromRelay, getConversationMeta, hasReachedNip17RelayEnd } = useDMContext();
   const [visibleCount, setVisibleCount] = useState(MESSAGES_PER_PAGE);
 
-  const result = useMemo(() => {
-    const conversationData = allMessages.get(conversationId);
+  const conversationData = allMessages.get(conversationId);
+  const meta = getConversationMeta(conversationId);
 
-    if (!conversationData) {
-      return {
-        messages: [],
-        hasMoreMessages: false,
-        totalCount: 0,
-        lastMessage: null,
-        lastActivity: 0,
-      };
-    }
+  const totalCachedCount = conversationData?.messages.length ?? 0;
+  const hasMoreCached = totalCachedCount > visibleCount;
+  const hasMoreOnRelay = !(meta?.hasReachedNip4End && hasReachedNip17RelayEnd);
+  const isLoadingFromRelay = meta?.isLoadingFromRelay ?? false;
 
-    const totalMessages = conversationData.messages.length;
-    const hasMore = totalMessages > visibleCount;
-    
-    // Return the most recent N messages (slice from the end)
-    const visibleMessages = conversationData.messages.slice(-visibleCount);
+  const visibleMessages = useMemo(() => {
+    if (!conversationData) return [];
+    return conversationData.messages.slice(-visibleCount);
+  }, [conversationData, visibleCount]);
 
-    return {
-      messages: visibleMessages,
-      hasMoreMessages: hasMore,
-      totalCount: totalMessages,
-      lastMessage: conversationData.lastMessage,
-      lastActivity: conversationData.lastActivity,
-    };
-  }, [allMessages, conversationId, visibleCount]);
-
-  const loadEarlierMessages = useCallback(() => {
+  const loadMoreCached = useCallback(() => {
     setVisibleCount(prev => prev + MESSAGES_PER_PAGE);
   }, []);
 
-  // Reset visible count when conversation changes
+  const loadFromRelay = useCallback(async () => {
+    if (isLoadingFromRelay) return;
+    await loadConversationFromRelay(conversationId);
+  }, [loadConversationFromRelay, conversationId, isLoadingFromRelay]);
+
+  // Reset visible count on conversation change
   useEffect(() => {
     setVisibleCount(MESSAGES_PER_PAGE);
   }, [conversationId]);
 
+  // Auto-load from relay if too few messages and relay may have more
+  useEffect(() => {
+    if (totalCachedCount < MESSAGES_PER_PAGE && hasMoreOnRelay && !isLoadingFromRelay && conversationId) {
+      loadFromRelay();
+    }
+  }, [conversationId, totalCachedCount, hasMoreOnRelay, isLoadingFromRelay, loadFromRelay]);
+
   return {
-    ...result,
-    loadEarlierMessages,
+    messages: visibleMessages,
+    hasMoreCached,
+    hasMoreOnRelay,
+    isLoadingFromRelay,
+    loadMoreCached,
+    loadFromRelay,
+    totalCachedCount,
+    // Keep backward-compatible aliases for any other consumers
+    hasMoreMessages: hasMoreCached,
+    loadEarlierMessages: loadMoreCached,
+    totalCount: totalCachedCount,
+    lastMessage: conversationData?.lastMessage ?? null,
+    lastActivity: conversationData?.lastActivity ?? 0,
   };
 }

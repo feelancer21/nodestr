@@ -11,7 +11,7 @@ import { NSecSigner, NPool, type NostrEvent } from '@nostrify/nostrify';
 import { generateSecretKey, getEventHash, verifyEvent } from 'nostr-tools';
 import type { MessageProtocol } from '@/lib/dmConstants';
 import { MESSAGE_PROTOCOL } from '@/lib/dmConstants';
-import { DMContext, DMContextType, FileAttachment } from '@/contexts/DMContext';
+import { DMContext, DMContextType, FileAttachment, ConversationMeta } from '@/contexts/DMContext';
 
 // ============================================================================
 // DM Types and Constants
@@ -96,6 +96,8 @@ const DM_CONSTANTS = {
 } as const;
 
 const INITIAL_FETCH_LIMIT = 100; // Messages per protocol for initial load (no cache)
+const CONVERSATION_FETCH_LIMIT_NIP4 = 25;  // Per-partner NIP-04 fetch
+const CONVERSATION_FETCH_LIMIT_NIP17 = 50; // Global NIP-17 fetch (broader query)
 
 const createErrorLogger = (name: string) => {
   let count = 0;
@@ -199,6 +201,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
   });
   const [canLoadOlder, setCanLoadOlder] = useState(false);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const [conversationMeta, setConversationMeta] = useState<Map<string, ConversationMeta>>(new Map());
+  const [oldestNip17GiftWrapTimestamp, setOldestNip17GiftWrapTimestamp] = useState<number | null>(null);
+  const [hasReachedNip17RelayEnd, setHasReachedNip17RelayEnd] = useState(false);
 
   const nip4SubscriptionRef = useRef<{ close: () => void } | null>(null);
   const nip17SubscriptionRef = useRef<{ close: () => void } | null>(null);
@@ -242,6 +247,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setScanProgress({ nip4: null, nip17: null });
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
+      setConversationMeta(new Map());
+      setOldestNip17GiftWrapTimestamp(null);
+      setHasReachedNip17RelayEnd(false);
       hasLoadedFullHistoryRef.current = false;
       bgSyncSeenIdsRef.current.clear();
     }
@@ -1370,6 +1378,10 @@ export function DMProvider({ children, config }: DMProviderProps) {
         enableNIP17 ? startNIP17Subscription(nip17Result?.lastMessageTimestamp) : Promise.resolve()
       ]);
 
+      // Sync relay metadata baseline to prevent spurious refetch when
+      // NostrSync updates relays during initial load (Issue 006)
+      previousRelayMetadata.current = appConfig.relayMetadata;
+
       setLoadingPhase(LOADING_PHASES.READY);
     } catch (error) {
       console.error('[DM] Error in message loading:', error);
@@ -1377,7 +1389,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setLoadingPhase(LOADING_PHASES.READY);
       setIsLoading(false);
     }
-  }, [loadAllCachedMessages, queryRelaysForMessagesSince, startNIP4Subscription, startNIP17Subscription, enableNIP17, isLoading, userPubkey]);
+  }, [loadAllCachedMessages, queryRelaysForMessagesSince, startNIP4Subscription, startNIP17Subscription, enableNIP17, isLoading, userPubkey, appConfig.relayMetadata]);
 
   // Clear cache and refetch from relays
   const clearCacheAndRefetch = useCallback(async () => {
@@ -1442,6 +1454,124 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setIsLoadingOlder(false);
     }
   }, [isLoadingOlder, userPubkey, queryRelaysForMessagesSince, enableNIP17]);
+
+  // Load conversation from relay (per-chat pagination)
+  const loadConversationFromRelay = useCallback(async (partnerPubkey: string): Promise<number> => {
+    if (!user?.pubkey || !nostr) return 0;
+
+    // Mark as loading
+    setConversationMeta(prev => {
+      const next = new Map(prev);
+      const existing = next.get(partnerPubkey) || { oldestNip4Timestamp: null, hasReachedNip4End: false, isLoadingFromRelay: false };
+      next.set(partnerPubkey, { ...existing, isLoadingFromRelay: true });
+      return next;
+    });
+
+    try {
+      const partnerData = messages.get(partnerPubkey);
+      let newMessagesForPartner = 0;
+
+      // --- NIP-04: Per-partner query with until+limit cursor ---
+      const hasNip4 = partnerData?.hasNIP4 !== false; // true or undefined = query
+      if (hasNip4) {
+        const meta = conversationMeta.get(partnerPubkey);
+        const nip4Messages = (partnerData?.messages || []).filter(m => m.kind === 4);
+        const oldestNip4Ts = meta?.oldestNip4Timestamp
+          ?? (nip4Messages.length > 0 ? Math.min(...nip4Messages.map(m => m.created_at)) : Math.floor(Date.now() / 1000));
+
+        const nip4Filters = [
+          { kinds: [4], authors: [user.pubkey], '#p': [partnerPubkey], limit: CONVERSATION_FETCH_LIMIT_NIP4, until: oldestNip4Ts },
+          { kinds: [4], '#p': [user.pubkey], authors: [partnerPubkey], limit: CONVERSATION_FETCH_LIMIT_NIP4, until: oldestNip4Ts },
+        ];
+
+        const nip4Events = await nostr.query(nip4Filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP4_QUERY_TIMEOUT) });
+        const validNip4 = nip4Events.filter(validateDMEvent);
+
+        // Process each message
+        for (const event of validNip4) {
+          await processIncomingNIP4Message(event);
+        }
+
+        const nip4NewOldest = validNip4.length > 0 ? Math.min(...validNip4.map(e => e.created_at)) : oldestNip4Ts;
+        const reachedNip4End = validNip4.length < CONVERSATION_FETCH_LIMIT_NIP4;
+
+        newMessagesForPartner += validNip4.length;
+
+        // Update NIP-04 meta
+        setConversationMeta(prev => {
+          const next = new Map(prev);
+          next.set(partnerPubkey, {
+            oldestNip4Timestamp: nip4NewOldest,
+            hasReachedNip4End: reachedNip4End,
+            isLoadingFromRelay: false,
+          });
+          return next;
+        });
+      }
+
+      // --- NIP-17: Global broader query (cannot filter per partner) ---
+      if (enableNIP17 && !hasReachedNip17RelayEnd) {
+        const nip17Until = oldestNip17GiftWrapTimestamp ?? Math.floor(Date.now() / 1000);
+        const nip17Filters = [
+          { kinds: [1059], '#p': [user.pubkey], limit: CONVERSATION_FETCH_LIMIT_NIP17, until: nip17Until }
+        ];
+
+        const nip17Events = await nostr.query(nip17Filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT) });
+
+        // Track oldest gift wrap timestamp for cursor
+        let batchOldestGiftWrap = Infinity;
+        for (const giftWrap of nip17Events) {
+          if (giftWrap.created_at < batchOldestGiftWrap) {
+            batchOldestGiftWrap = giftWrap.created_at;
+          }
+          // Process ALL events (not just for this partner) — serves as prefetch
+          await processIncomingNIP17Message(giftWrap);
+        }
+
+        if (batchOldestGiftWrap < Infinity) {
+          setOldestNip17GiftWrapTimestamp(prev =>
+            prev === null ? batchOldestGiftWrap : Math.min(prev, batchOldestGiftWrap)
+          );
+        }
+
+        if (nip17Events.length < CONVERSATION_FETCH_LIMIT_NIP17) {
+          setHasReachedNip17RelayEnd(true);
+        }
+
+        // Count NIP-17 events processed (approximate — includes other conversations)
+        newMessagesForPartner += nip17Events.length;
+      }
+
+      // If we also had NIP-17, update loading state
+      if (enableNIP17) {
+        setConversationMeta(prev => {
+          const next = new Map(prev);
+          const existing = next.get(partnerPubkey) || { oldestNip4Timestamp: null, hasReachedNip4End: false, isLoadingFromRelay: false };
+          next.set(partnerPubkey, { ...existing, isLoadingFromRelay: false });
+          return next;
+        });
+      }
+
+      return newMessagesForPartner;
+    } catch (error) {
+      console.error(`[DM] Error loading conversation for ${partnerPubkey.slice(0, 8)}:`, error);
+      // Clear loading state on error
+      setConversationMeta(prev => {
+        const next = new Map(prev);
+        const existing = next.get(partnerPubkey);
+        if (existing) {
+          next.set(partnerPubkey, { ...existing, isLoadingFromRelay: false });
+        }
+        return next;
+      });
+      return 0;
+    }
+  }, [user, nostr, messages, conversationMeta, enableNIP17, hasReachedNip17RelayEnd, oldestNip17GiftWrapTimestamp, processIncomingNIP4Message, processIncomingNIP17Message]);
+
+  // Get conversation metadata
+  const getConversationMeta = useCallback((partnerPubkey: string) => {
+    return conversationMeta.get(partnerPubkey);
+  }, [conversationMeta]);
 
   // Main effect to load messages
   useEffect(() => {
@@ -1777,6 +1907,9 @@ export function DMProvider({ children, config }: DMProviderProps) {
     canLoadOlder,
     isLoadingOlder,
     loadOlderMessages,
+    loadConversationFromRelay,
+    getConversationMeta,
+    hasReachedNip17RelayEnd,
   };
 
   return (
