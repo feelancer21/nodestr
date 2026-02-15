@@ -444,6 +444,10 @@ const [notes, reposts, genericReposts] = await Promise.all([
 4. **Filter in JavaScript**: Separate event types after receiving results rather than making multiple requests
 5. **Consider relay capacity**: Each query consumes relay resources and may count against rate limits
 
+### NIP-17 Timestamp Fuzzing (±2 Days)
+
+NIP-17 gift wraps (kind 1059) have **randomized `created_at` timestamps** within ±2 days of the actual send time. This is a privacy feature to hide message timing. Any relay filter using `since` for NIP-17 events — whether for one-time queries OR ongoing subscriptions — **must** subtract a 2-day buffer from the `since` value. Without this buffer, events whose fuzzed timestamp lands before `since` will be silently missed by the relay. This applies to **all** NIP-17 relay interactions, not just initial catch-up queries.
+
 ---
 
 ## Event Validation

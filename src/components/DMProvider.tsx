@@ -94,6 +94,7 @@ const DM_CONSTANTS = {
   NIP17_QUERY_TIMEOUT: 30000,
   ERROR_LOG_DEBOUNCE_DELAY: 2000,
   BACKGROUND_SYNC_INTERVAL: 30000, // 30s fallback sync in case subscriptions drop
+  FRESH_CACHE_THRESHOLD_SECONDS: 300,
 } as const;
 
 const INITIAL_FETCH_WINDOW_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -1147,6 +1148,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
     const pool = nostr as NPool;
     const relayUrls = getReadRelayUrls();
     let isActive = true;
+    const seenIds = new Set<string>();
 
     console.log(`[DM] Starting ${label} subscription on ${relayUrls.length} relays`);
 
@@ -1157,7 +1159,11 @@ export function DMProvider({ children, config }: DMProviderProps) {
           for await (const msg of relay.req(filters)) {
             if (!isActive) break;
             if (msg[0] === 'EVENT') {
-              console.log(`[DM] ${label} event from ${url}:`, msg[2].id?.slice(0, 8));
+              const eventId = msg[2].id;
+              if (eventId && !seenIds.has(eventId)) {
+                seenIds.add(eventId);
+                console.log(`[DM] ${label} new event from ${url}:`, eventId.slice(0, 8));
+              }
               await onEvent(msg[2]);
             } else if (msg[0] === 'EOSE') {
               console.log(`[DM] ${label} EOSE from ${url}`);
@@ -1228,7 +1234,10 @@ export function DMProvider({ children, config }: DMProviderProps) {
         subscriptionSince = lastSync.nip17 - DM_CONSTANTS.SUBSCRIPTION_OVERLAP_SECONDS;
       }
 
-      // Adjust for NIP-17 timestamp fuzzing (±2 days)
+      // Adjust for NIP-17 timestamp fuzzing (±2 days) — ALWAYS required.
+      // Gift wraps have randomized created_at, so a message sent NOW may have
+      // a timestamp up to 2 days in the past. Without this buffer, relays
+      // silently drop events whose fuzzed timestamp falls before `since`.
       const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
       subscriptionSince = subscriptionSince - TWO_DAYS_IN_SECONDS;
 
@@ -1237,6 +1246,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
         '#p': [user.pubkey],
         since: subscriptionSince,
       }];
+
+      console.log(`[DM] NIP-17 subscription since=${subscriptionSince} (${new Date(subscriptionSince * 1000).toISOString()}) [2-day fuzz buffer applied]`);
 
       nip17SubscriptionRef.current = subscribeToRelays(
         filters,
@@ -1391,10 +1402,22 @@ export function DMProvider({ children, config }: DMProviderProps) {
       // ===== PHASE 2: Query relays in background (non-blocking, parallel) =====
       setLoadingPhase(LOADING_PHASES.RELAYS);
 
-      // Run NIP-04 and NIP-17 queries IN PARALLEL
+      // Skip relay queries if cache is fresh (< 5 minutes old)
+      const now = Math.floor(Date.now() / 1000);
+      const skipNIP4Relay = nip4Since !== undefined && (now - nip4Since) < DM_CONSTANTS.FRESH_CACHE_THRESHOLD_SECONDS;
+      const skipNIP17Relay = nip17Since !== undefined && (now - nip17Since) < DM_CONSTANTS.FRESH_CACHE_THRESHOLD_SECONDS;
+
+      if (skipNIP4Relay) console.log('[DM] Cache fresh (<5min), skipping NIP-04 relay query');
+      if (skipNIP17Relay) console.log('[DM] Cache fresh (<5min), skipping NIP-17 relay query');
+
+      // Run NIP-04 and NIP-17 queries IN PARALLEL (skip if cache is fresh)
       const [nip4Result, nip17Result] = await Promise.all([
-        queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP04, nip4Since),
-        enableNIP17 ? queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP17, nip17Since) : Promise.resolve({ lastMessageTimestamp: undefined, messageCount: 0 })
+        skipNIP4Relay
+          ? Promise.resolve({ lastMessageTimestamp: nip4Since, messageCount: 0 })
+          : queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP04, nip4Since),
+        (enableNIP17 && !skipNIP17Relay)
+          ? queryRelaysForMessagesSince(MESSAGE_PROTOCOL.NIP17, nip17Since)
+          : Promise.resolve({ lastMessageTimestamp: nip17Since, messageCount: 0 })
       ]);
 
       const totalNewMessages = nip4Result.messageCount + (nip17Result?.messageCount || 0);
