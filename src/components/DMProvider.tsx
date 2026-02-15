@@ -88,8 +88,6 @@ const DM_CONSTANTS = {
   DEBOUNCED_WRITE_DELAY: 15000,
   RECENT_MESSAGE_THRESHOLD: 5000,
   SUBSCRIPTION_OVERLAP_SECONDS: 10, // Overlap for subscriptions to catch race conditions
-  SCAN_TOTAL_LIMIT: 20000,
-  SCAN_BATCH_SIZE: 1000,
   NIP4_QUERY_TIMEOUT: 15000,
   NIP17_QUERY_TIMEOUT: 30000,
   ERROR_LOG_DEBOUNCE_DELAY: 2000,
@@ -97,12 +95,7 @@ const DM_CONSTANTS = {
   FRESH_CACHE_THRESHOLD_SECONDS: 300,
 } as const;
 
-const INITIAL_FETCH_WINDOW_SECONDS = 30 * 24 * 60 * 60; // 30 days
-
-const SCAN_STATUS_MESSAGES = {
-  NIP4_STARTING: 'Starting NIP-4 scan...',
-  NIP17_STARTING: 'Starting NIP-17 scan...',
-} as const;
+const INITIAL_FETCH_LIMIT = 100; // Messages per protocol for initial load (no cache)
 
 const createErrorLogger = (name: string) => {
   let count = 0;
@@ -481,124 +474,58 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const loadPastNIP4Messages = useCallback(async (sinceTimestamp?: number) => {
     if (!user?.pubkey) return;
 
-    let allMessages: NostrEvent[] = [];
-    let processedMessages = 0;
-    let currentSince = sinceTimestamp ?? (Math.floor(Date.now() / 1000) - INITIAL_FETCH_WINDOW_SECONDS);
-
-
-    setScanProgress(prev => ({ ...prev, nip4: { current: 0, status: SCAN_STATUS_MESSAGES.NIP4_STARTING } }));
-
-    while (processedMessages < DM_CONSTANTS.SCAN_TOTAL_LIMIT) {
-      const batchLimit = Math.min(DM_CONSTANTS.SCAN_BATCH_SIZE, DM_CONSTANTS.SCAN_TOTAL_LIMIT - processedMessages);
-
+    if (sinceTimestamp === undefined) {
+      // First load without cache: fetch only the N most recent messages
       const filters = [
-        { kinds: [4], '#p': [user.pubkey], limit: batchLimit, since: currentSince },
-        { kinds: [4], authors: [user.pubkey], limit: batchLimit, since: currentSince }
+        { kinds: [4], '#p': [user.pubkey], limit: Math.ceil(INITIAL_FETCH_LIMIT / 2) },
+        { kinds: [4], authors: [user.pubkey], limit: Math.ceil(INITIAL_FETCH_LIMIT / 2) }
       ];
-
-      try {
-        const batchDMs = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP4_QUERY_TIMEOUT) });
-        const validBatchDMs = batchDMs.filter(validateDMEvent);
-
-        if (validBatchDMs.length === 0) break;
-
-        allMessages = [...allMessages, ...validBatchDMs];
-        processedMessages += validBatchDMs.length;
-
-        setScanProgress(prev => ({
-          ...prev,
-          nip4: {
-            current: allMessages.length,
-            status: `Batch ${Math.floor(processedMessages / DM_CONSTANTS.SCAN_BATCH_SIZE) + 1} complete: ${validBatchDMs.length} messages`
-          }
-        }));
-
-        const oldestToMe = validBatchDMs.filter(m => m.pubkey !== user.pubkey).length > 0
-          ? Math.min(...validBatchDMs.filter(m => m.pubkey !== user.pubkey).map(m => m.created_at))
-          : Infinity;
-        const oldestFromMe = validBatchDMs.filter(m => m.pubkey === user.pubkey).length > 0
-          ? Math.min(...validBatchDMs.filter(m => m.pubkey === user.pubkey).map(m => m.created_at))
-          : Infinity;
-
-        const oldestInBatch = Math.min(oldestToMe, oldestFromMe);
-        if (oldestInBatch !== Infinity) {
-          currentSince = oldestInBatch;
-        }
-
-        if (validBatchDMs.length < batchLimit * 2) break;
-      } catch (error) {
-        console.error('[DM] NIP-4 Error in batch query:', error);
-        break;
-      }
+      setScanProgress(prev => ({ ...prev, nip4: { current: 0, status: 'Loading recent messages...' } }));
+      const messages = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP4_QUERY_TIMEOUT) });
+      const validMessages = messages.filter(validateDMEvent);
+      setScanProgress(prev => ({ ...prev, nip4: null }));
+      return validMessages;
     }
 
+    // Incremental sync from cache: single query with since, no complex batching
+    const filters = [
+      { kinds: [4], '#p': [user.pubkey], since: sinceTimestamp },
+      { kinds: [4], authors: [user.pubkey], since: sinceTimestamp }
+    ];
+    setScanProgress(prev => ({ ...prev, nip4: { current: 0, status: 'Syncing new messages...' } }));
+    const messages = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP4_QUERY_TIMEOUT) });
+    const validMessages = messages.filter(validateDMEvent);
     setScanProgress(prev => ({ ...prev, nip4: null }));
-    return allMessages;
+    return validMessages;
   }, [user, nostr]);
 
   // Load past NIP-17 messages
   const loadPastNIP17Messages = useCallback(async (sinceTimestamp?: number) => {
     if (!user?.pubkey) return;
 
-    let allNIP17Events: NostrEvent[] = [];
-    let processedMessages = 0;
-
-    // Adjust since timestamp to account for NIP-17 timestamp fuzzing (±2 days)
-    // We need to query from (lastSync - 2 days) to catch messages with randomized past timestamps
-    // This may fetch duplicates, but they're filtered by message ID in addMessageToState
-    const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
-    let currentSince: number;
     if (sinceTimestamp === undefined) {
-      // No cache - use 30-day window plus NIP-17 fuzz buffer
-      currentSince = Math.floor(Date.now() / 1000) - INITIAL_FETCH_WINDOW_SECONDS - TWO_DAYS_IN_SECONDS;
-    } else if (sinceTimestamp === 0) {
-      // Explicit "load all"
-      currentSince = 0;
-    } else {
-      // Incremental from cache
-      currentSince = sinceTimestamp - TWO_DAYS_IN_SECONDS;
-    }
-
-
-    setScanProgress(prev => ({ ...prev, nip17: { current: 0, status: SCAN_STATUS_MESSAGES.NIP17_STARTING } }));
-
-    while (processedMessages < DM_CONSTANTS.SCAN_TOTAL_LIMIT) {
-      const batchLimit = Math.min(DM_CONSTANTS.SCAN_BATCH_SIZE, DM_CONSTANTS.SCAN_TOTAL_LIMIT - processedMessages);
-
+      // First load without cache: limit-based, NO fuzz buffer needed (no since = no time boundary)
       const filters = [
-        { kinds: [1059], '#p': [user.pubkey], limit: batchLimit, since: currentSince }
+        { kinds: [1059], '#p': [user.pubkey], limit: INITIAL_FETCH_LIMIT }
       ];
-
-      try {
-        const batchEvents = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT) });
-
-        if (batchEvents.length === 0) break;
-
-        allNIP17Events = [...allNIP17Events, ...batchEvents];
-        processedMessages += batchEvents.length;
-
-        setScanProgress(prev => ({
-          ...prev,
-          nip17: {
-            current: allNIP17Events.length,
-            status: `Batch ${Math.floor(processedMessages / DM_CONSTANTS.SCAN_BATCH_SIZE) + 1} complete: ${batchEvents.length} messages`
-          }
-        }));
-
-        if (batchEvents.length > 0) {
-          const oldestInBatch = Math.min(...batchEvents.map(m => m.created_at));
-          currentSince = oldestInBatch;
-        }
-
-        if (batchEvents.length < batchLimit) break;
-      } catch (error) {
-        console.error('[DM] NIP-17 Error in batch query:', error);
-        break;
-      }
+      setScanProgress(prev => ({ ...prev, nip17: { current: 0, status: 'Loading recent messages...' } }));
+      const events = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT) });
+      setScanProgress(prev => ({ ...prev, nip17: null }));
+      return events;
     }
 
+    // Incremental sync from cache: single query with since
+    // NIP-17 fuzz buffer: subtract 2 days from sinceTimestamp to catch randomized timestamps
+    const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
+    const adjustedSince = sinceTimestamp === 0 ? 0 : sinceTimestamp - TWO_DAYS_IN_SECONDS;
+
+    const filters = [
+      { kinds: [1059], '#p': [user.pubkey], since: adjustedSince }
+    ];
+    setScanProgress(prev => ({ ...prev, nip17: { current: 0, status: 'Syncing new messages...' } }));
+    const events = await nostr.query(filters, { signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT) });
     setScanProgress(prev => ({ ...prev, nip17: null }));
-    return allNIP17Events;
+    return events;
   }, [user, nostr]);
 
   // Query relays for messages
