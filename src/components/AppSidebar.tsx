@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { Home, MessageCircle, PlugZap, Settings, Star, UserPlus, LogOut } from 'lucide-react';
+import { Home, Info, MessageCircle, PlugZap, Settings, Star, UserPlus, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +15,7 @@ import SignupDialog from '@/components/auth/SignupDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
+  { path: '/about', label: 'About', icon: Info },
   { path: '/dms', label: 'DMs', icon: MessageCircle },
   { path: '/settings', label: 'Settings', icon: Settings },
 ] as const;
@@ -39,6 +40,7 @@ export function AppSidebar() {
       location.pathname.startsWith('/profile/') ||
       location.pathname.startsWith('/p/')
     )) return true;
+    if (path === '/about' && location.pathname.startsWith('/about')) return true;
     return false;
   };
 

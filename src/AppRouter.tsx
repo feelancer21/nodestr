@@ -10,6 +10,8 @@ import { NIP19Page } from "./pages/NIP19Page";
 import ProfilePage from "./pages/ProfilePage";
 import LnPubPage from "./pages/LnPubPage";
 import NodePage from "./pages/NodePage";
+import AboutPage from "./pages/AboutPage";
+import ProtocolPage from "./pages/ProtocolPage";
 import NotFound from "./pages/NotFound";
 
 export function AppRouter() {
@@ -29,6 +31,9 @@ export function AppRouter() {
           <Route path="/lightning/operator/:lightningPubkey" element={<LnPubPage />} />
           {/* Lightning node page by network and pubkey */}
           <Route path="/lightning/:network/node/:pubkey" element={<NodePage />} />
+          {/* About pages */}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/about/protocol" element={<ProtocolPage />} />
           {/* NIP-19 route for npub1, note1, naddr1, nevent1, nprofile1 */}
           <Route path="/:nip19" element={<NIP19Page />} />
         </Route>

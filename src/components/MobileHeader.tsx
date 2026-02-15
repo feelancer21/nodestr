@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Home, Menu, MessageCircle, PlugZap, Search, Settings, Star } from 'lucide-react';
+import { Home, Info, Menu, MessageCircle, PlugZap, Search, Settings, Star } from 'lucide-react';
 import { nip19 } from 'nostr-tools';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -19,6 +19,7 @@ import SignupDialog from '@/components/auth/SignupDialog';
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
+  { path: '/about', label: 'About', icon: Info },
   { path: '/dms', label: 'DMs', icon: MessageCircle },
   { path: '/settings', label: 'Settings', icon: Settings },
 ] as const;
@@ -69,6 +70,7 @@ export function MobileHeader() {
       location.pathname.startsWith('/profile/') ||
       location.pathname.startsWith('/p/')
     )) return true;
+    if (path === '/about' && location.pathname.startsWith('/about')) return true;
     return false;
   };
 
