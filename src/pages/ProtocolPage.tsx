@@ -3,6 +3,7 @@ import { useSeoMeta } from '@unhead/react';
 import { useQuery } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import { ArrowLeft } from 'lucide-react';
+import { verifyEvent } from 'nostr-tools';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MarkdownContent } from '@/components/MarkdownContent';
@@ -35,6 +36,10 @@ export function ProtocolPage() {
 
       // Kind 30817 is addressable/replaceable — take most recent
       const latest = events.sort((a, b) => b.created_at - a.created_at)[0];
+
+      // Verify signature to prevent malicious relays from serving fake content
+      if (!verifyEvent(latest)) return null;
+
       return latest.content;
     },
     staleTime: 30 * 60 * 1000,

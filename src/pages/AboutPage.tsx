@@ -21,8 +21,9 @@ export function AboutPage() {
       <div className="flex items-start gap-2 p-3 rounded-md border border-amber-500/50 bg-amber-500/10 text-sm text-foreground">
         <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
         <p>
-          nodestr is alpha software. Everything here is experimental and under active
-          development. Expect rough edges, breaking changes, and missing features.
+          nodestr is alpha software, built entirely through vibe coding. Everything
+          here is experimental and under active development. Expect rough edges,
+          breaking changes, and missing features.
         </p>
       </div>
 
@@ -55,11 +56,11 @@ export function AboutPage() {
         </CardHeader>
         <CardContent className="text-sm text-foreground space-y-3 leading-relaxed">
           <p>
-            As the Lightning ecosystem grows, so does the number of services built on top
-            of it — LSPs, liquidity providers, routing services. These services are
-            decentralized by nature, but when something goes wrong, users need to find the
-            right support contact for a service, or the right operator to coordinate with.
-            That can become a real problem.
+            As the Lightning ecosystem grows, so does the number of routing nodes
+            and services built on top of it. Some of these operate trustlessly,
+            others require trust by design. Either way, when something goes wrong,
+            users need to find the right support contact for a service, or the right
+            operator to coordinate with.
           </p>
           <p>
             Regardless of where this information is published, profiles can be
@@ -71,8 +72,7 @@ export function AboutPage() {
           <p>
             Bots make this harder. Automated accounts can create convincing operator
             profiles and impersonate support channels. As their numbers grow, finding
-            authentic information becomes increasingly difficult — especially for users
-            who need help with a real problem.
+            authentic information becomes increasingly difficult.
           </p>
           <p>
             If AI agents begin to operate Lightning nodes, they would face the same
