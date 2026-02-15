@@ -93,7 +93,7 @@ const DM_CONSTANTS = {
   NIP4_QUERY_TIMEOUT: 15000,
   NIP17_QUERY_TIMEOUT: 30000,
   ERROR_LOG_DEBOUNCE_DELAY: 2000,
-  BACKGROUND_SYNC_INTERVAL: 30000, // 30s fallback sync in case subscriptions drop
+  BACKGROUND_SYNC_INTERVAL: 300000, // 5 min fallback sync — subscriptions are the primary real-time mechanism
   FRESH_CACHE_THRESHOLD_SECONDS: 300,
 } as const;
 
@@ -250,6 +250,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setCanLoadOlder(false);
       setIsLoadingOlder(false);
       hasLoadedFullHistoryRef.current = false;
+      bgSyncSeenIdsRef.current.clear();
     }
   }, [userPubkey]);
 
@@ -1592,44 +1593,74 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const lastSyncRef = useRef(lastSync);
   lastSyncRef.current = lastSync;
 
+  const subscriptionsRef = useRef(subscriptions);
+  subscriptionsRef.current = subscriptions;
+
+  const bgSyncSeenIdsRef = useRef(new Set<string>());
+
   useEffect(() => {
     if (!enabled || !userPubkey || !nostr || !hasInitialLoadCompleted) return;
 
     const interval = setInterval(async () => {
       try {
-        const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
         const now = Math.floor(Date.now() / 1000);
         const currentLastSync = lastSyncRef.current;
+        const currentSubscriptions = subscriptionsRef.current;
 
-        // NIP-17: query for new gift wraps
+        // NIP-17: skip if subscription is healthy, otherwise query as safety net
         if (enableNIP17) {
-          const nip17Since = (currentLastSync.nip17 || now) - TWO_DAYS_IN_SECONDS;
-          const events = await nostr.query(
-            [{ kinds: [1059], '#p': [userPubkey], since: nip17Since }],
+          if (currentSubscriptions.isNIP17Connected) {
+            console.log('[DM] Background sync: NIP-17 subscription healthy, skipping');
+          } else {
+            const TWO_DAYS_IN_SECONDS = 2 * 24 * 60 * 60;
+            const nip17Since = (currentLastSync.nip17 || now) - TWO_DAYS_IN_SECONDS;
+            const events = await nostr.query(
+              [{ kinds: [1059], '#p': [userPubkey], since: nip17Since }],
+              { signal: AbortSignal.timeout(10000) }
+            );
+            let hasNewNip17 = false;
+            for (const event of events) {
+              if (!bgSyncSeenIdsRef.current.has(event.id)) {
+                bgSyncSeenIdsRef.current.add(event.id);
+                hasNewNip17 = true;
+              }
+              await processIncomingNIP17Message(event);
+            }
+            if (hasNewNip17) {
+              console.log(`[DM] Background sync: ${events.length} NIP-17 events (new), updating lastSync`);
+              setLastSync(prev => ({ ...prev, nip17: now }));
+            } else if (events.length > 0) {
+              console.log(`[DM] Background sync: ${events.length} NIP-17 events (all duplicates), skipping lastSync update`);
+            }
+          }
+        }
+
+        // NIP-4: skip if subscription is healthy, otherwise query as safety net
+        if (currentSubscriptions.isNIP4Connected) {
+          console.log('[DM] Background sync: NIP-4 subscription healthy, skipping');
+        } else {
+          const nip4Since = (currentLastSync.nip4 || now) - DM_CONSTANTS.SUBSCRIPTION_OVERLAP_SECONDS;
+          const nip4Events = await nostr.query(
+            [
+              { kinds: [4], '#p': [userPubkey], since: nip4Since },
+              { kinds: [4], authors: [userPubkey], since: nip4Since },
+            ],
             { signal: AbortSignal.timeout(10000) }
           );
-          for (const event of events) {
-            await processIncomingNIP17Message(event);
+          let hasNewNip4 = false;
+          for (const event of nip4Events) {
+            if (!bgSyncSeenIdsRef.current.has(event.id)) {
+              bgSyncSeenIdsRef.current.add(event.id);
+              hasNewNip4 = true;
+            }
+            await processIncomingNIP4Message(event);
           }
-          if (events.length > 0) {
-            setLastSync(prev => ({ ...prev, nip17: now }));
+          if (hasNewNip4) {
+            console.log(`[DM] Background sync: ${nip4Events.length} NIP-4 events (new), updating lastSync`);
+            setLastSync(prev => ({ ...prev, nip4: now }));
+          } else if (nip4Events.length > 0) {
+            console.log(`[DM] Background sync: ${nip4Events.length} NIP-4 events (all duplicates), skipping lastSync update`);
           }
-        }
-
-        // NIP-4: query for new DMs
-        const nip4Since = (currentLastSync.nip4 || now) - DM_CONSTANTS.SUBSCRIPTION_OVERLAP_SECONDS;
-        const nip4Events = await nostr.query(
-          [
-            { kinds: [4], '#p': [userPubkey], since: nip4Since },
-            { kinds: [4], authors: [userPubkey], since: nip4Since },
-          ],
-          { signal: AbortSignal.timeout(10000) }
-        );
-        for (const event of nip4Events) {
-          await processIncomingNIP4Message(event);
-        }
-        if (nip4Events.length > 0) {
-          setLastSync(prev => ({ ...prev, nip4: now }));
         }
       } catch {
         // Silently ignore background sync errors
