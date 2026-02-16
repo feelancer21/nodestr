@@ -21,6 +21,7 @@ export function useUnreadSafe(): UnreadContextType {
       unreadCounts: new Map(),
       markAsRead: () => {},
       markAllAsRead: () => {},
+      persistReadCountForViewed: () => {},
     };
   }
   return ctx;

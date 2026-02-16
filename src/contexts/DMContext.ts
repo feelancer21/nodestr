@@ -146,6 +146,8 @@ export interface DMContextType {
   loadConversationFromRelay: (partnerPubkey: string) => Promise<number>;
   getConversationMeta: (partnerPubkey: string) => ConversationMeta | undefined;
   hasReachedNip17RelayEnd: boolean;
+  oldestNip17GiftWrapTimestamp: number | null;
+  hasLoadedFullHistory: boolean;
 }
 
 export const DMContext = createContext<DMContextType | null>(null);

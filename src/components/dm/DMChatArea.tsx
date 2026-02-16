@@ -358,8 +358,8 @@ AutoGrowTextarea.displayName = 'AutoGrowTextarea';
 export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMChatAreaProps) => {
   const { user } = useCurrentUser();
   const { sendMessage, isLoading } = useDMContext();
-  const { messages, hasMoreCached, hasMoreOnRelay, isLoadingFromRelay, loadMoreCached, loadFromRelay } = useConversationMessages(pubkey || '');
-  const { markAsRead } = useUnreadSafe();
+  const { messages, hasMoreCached, hasMoreOnRelay, isLoadingFromRelay, loadMoreCached, loadFromRelay, totalCachedCount } = useConversationMessages(pubkey || '');
+  const { markAsRead, persistReadCountForViewed } = useUnreadSafe();
 
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -454,16 +454,41 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     return () => resizeObserver.disconnect();
   }, [pubkey, getViewport]);
 
-  // Mark conversation as read when opening (with delay to avoid transient URL states)
+  // Mark conversation as read on open (500ms delay), on leave, and on F5.
+  // Must NOT fire on totalCachedCount changes — otherwise loading older messages
+  // while viewing immediately updates the read count, preventing badges.
+  // The beforeunload listener ensures messages loaded while viewing get their
+  // count persisted before the page unloads (markAsRead writes to localStorage
+  // synchronously before calling setState). React cleanup alone is unreliable
+  // on F5 — browsers may tear down the page before React processes it.
   useEffect(() => {
     if (!pubkey) return;
+    const currentPubkey = pubkey;
 
     const timer = setTimeout(() => {
-      markAsRead(pubkey);
+      markAsRead(currentPubkey);
     }, 500);
 
-    return () => clearTimeout(timer);
+    const handleBeforeUnload = () => {
+      markAsRead(currentPubkey);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      markAsRead(currentPubkey);
+    };
   }, [pubkey, markAsRead]);
+
+  // Silently keep localStorage read count in sync while viewing this conversation.
+  // Runs on every messages change (totalCachedCount). Does NOT update React state
+  // so badges remain visible. This ensures F5 always has an up-to-date count in
+  // localStorage — no reliance on beforeunload or cleanup timing.
+  useEffect(() => {
+    if (!pubkey) return;
+    persistReadCountForViewed(pubkey);
+  }, [pubkey, totalCachedCount, persistReadCountForViewed]);
 
   // Scroll to a specific message by ID (for reply preview link)
   const scrollToMessage = useCallback((messageId: string) => {
@@ -548,21 +573,24 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
     }, 0);
   }, [loadMoreCached, isLoadingMore]);
 
-  // IntersectionObserver for auto-loading cached messages
+  // IntersectionObserver for auto-loading: cached messages first, then relay
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
     if (!sentinel || !viewport) return;
 
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && hasMoreCached && !isLoadingMore) {
+      if (!entry.isIntersecting) return;
+      if (hasMoreCached && !isLoadingMore) {
         handleLoadMoreCached();
+      } else if (!hasMoreCached && hasMoreOnRelay && !isLoadingFromRelay) {
+        loadFromRelay();
       }
     }, { root: viewport, threshold: 0.1 });
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMoreCached, isLoadingMore, handleLoadMoreCached]);
+  }, [hasMoreCached, isLoadingMore, handleLoadMoreCached, hasMoreOnRelay, isLoadingFromRelay, loadFromRelay]);
 
   const handleReply = useCallback((data: ReplyTo) => {
     setReplyTo(data);
@@ -638,25 +666,13 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
               {/* Sentinel for IntersectionObserver auto-loading from cache */}
               <div ref={sentinelRef} className="h-1" />
 
-              {/* "Load earlier messages" button — only when cache exhausted and relay has more */}
-              {!hasMoreCached && hasMoreOnRelay && (
+              {/* Loading indicator while fetching from relays (auto-triggered by scroll) */}
+              {isLoadingFromRelay && (
                 <div className="flex justify-center mb-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={loadFromRelay}
-                    disabled={isLoadingFromRelay}
-                    className="text-xs"
-                  >
-                    {isLoadingFromRelay ? (
-                      <>
-                        <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                        Loading from relays...
-                      </>
-                    ) : (
-                      'Load earlier messages'
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Loading from relays...
+                  </div>
                 </div>
               )}
               {messages.map((message, index) => {

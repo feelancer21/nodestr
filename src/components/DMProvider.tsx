@@ -96,7 +96,7 @@ const DM_CONSTANTS = {
   FRESH_CACHE_THRESHOLD_SECONDS: 300,
 } as const;
 
-const INITIAL_FETCH_LIMIT = 100; // Messages per protocol for initial load (no cache)
+const INITIAL_FETCH_LIMIT = 50; // Messages per protocol for initial load (no cache)
 const CONVERSATION_FETCH_LIMIT_NIP4 = 25;  // Per-partner NIP-04 fetch
 const CONVERSATION_FETCH_LIMIT_NIP17 = 50; // Global NIP-17 fetch (broader query)
 
@@ -214,10 +214,16 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
   // Tracks whether the user has already performed a full-history load (since: 0).
   // Persisted in the IndexedDB cache so it survives page refreshes.
+  // Ref for sync reads in async code; state for triggering re-renders in consumers.
   const hasLoadedFullHistoryRef = useRef(false);
+  const [hasLoadedFullHistory, setHasLoadedFullHistory] = useState(false);
 
   // Epoch counter — incremented on each user switch to discard stale async operations
   const userEpochRef = useRef(0);
+
+  // Guards against spurious clearCacheAndRefetch when NostrSync updates relays
+  // during the initial load sequence (between setHasInitialLoadCompleted and subscription setup)
+  const isInitialLoadSequenceRef = useRef(false);
 
   // Reset all DM state when the active user changes (account switch)
   const previousUserPubkey = useRef(userPubkey);
@@ -255,6 +261,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setOldestNip17GiftWrapTimestamp(null);
       setHasReachedNip17RelayEnd(false);
       hasLoadedFullHistoryRef.current = false;
+      setHasLoadedFullHistory(false);
       bgSyncSeenIdsRef.current.clear();
     }
   }, [userPubkey]);
@@ -661,6 +668,14 @@ export function DMProvider({ children, config }: DMProviderProps) {
         });
 
         mergeMessagesIntoState(newState, epoch);
+
+        // Initialize NIP-17 gift wrap cursor for per-chat pagination.
+        // Without this, the first loadConversationFromRelay falls back to
+        // until: now, re-fetching recent gift wraps instead of older ones.
+        const oldestGiftWrapTs = messages.reduce((min, gw) =>
+          gw.created_at < min ? gw.created_at : min, messages[0].created_at);
+        setOldestNip17GiftWrapTimestamp(prev =>
+          prev === null ? oldestGiftWrapTs : Math.min(prev, oldestGiftWrapTs));
 
         const currentTime = Math.floor(Date.now() / 1000);
         setLastSync(prev => ({ ...prev, nip17: currentTime }));
@@ -1221,6 +1236,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       // Restore persisted full-history flag from cache
       if (cachedStore.hasLoadedFullHistory) {
         hasLoadedFullHistoryRef.current = true;
+        setHasLoadedFullHistory(true);
       }
 
       const filteredParticipants = enableNIP17
@@ -1306,6 +1322,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
   const startMessageLoading = useCallback(async () => {
     if (isLoading) return;
 
+    isInitialLoadSequenceRef.current = true;
     setIsLoading(true);
     setLoadingPhase(LOADING_PHASES.CACHE);
 
@@ -1449,10 +1466,12 @@ export function DMProvider({ children, config }: DMProviderProps) {
       // Sync relay metadata baseline to prevent spurious refetch when
       // NostrSync updates relays during initial load (Issue 006)
       previousRelayMetadata.current = appConfig.relayMetadata;
+      isInitialLoadSequenceRef.current = false;
 
       setLoadingPhase(LOADING_PHASES.READY);
     } catch (error) {
       console.error('[DM] Error in message loading:', error);
+      isInitialLoadSequenceRef.current = false;
       setHasInitialLoadCompleted(true);
       setLoadingPhase(LOADING_PHASES.READY);
       setIsLoading(false);
@@ -1490,6 +1509,7 @@ export function DMProvider({ children, config }: DMProviderProps) {
       setIsLoadingOlder(false);
       setOlderMessagesCount(null);
       hasLoadedFullHistoryRef.current = false;
+      setHasLoadedFullHistory(false);
 
       // Trigger reload by setting hasInitialLoadCompleted to false
       setHasInitialLoadCompleted(false);
@@ -1509,31 +1529,14 @@ export function DMProvider({ children, config }: DMProviderProps) {
       const pool = nostr as NPool;
       const BATCH_SIZE = 200; // per filter
 
-      // Find oldest timestamps in current state
-      let nip4OldestTimestamp: number | null = null;
-      let nip17OldestTimestamp: number | null = null;
-
-      messages.forEach((participant) => {
-        for (const msg of participant.messages) {
-          // NIP-04 messages are kind 4
-          if (msg.kind === 4) {
-            if (nip4OldestTimestamp === null || msg.created_at < nip4OldestTimestamp) {
-              nip4OldestTimestamp = msg.created_at;
-            }
-          }
-          // NIP-17 messages have originalGiftWrapId set
-          if (msg.originalGiftWrapId) {
-            if (nip17OldestTimestamp === null || msg.created_at < nip17OldestTimestamp) {
-              nip17OldestTimestamp = msg.created_at;
-            }
-          }
-        }
-      });
-
+      // Start from null (no `until` filter) so the first batch covers the full
+      // recent range. With a limited initial load, starting from the oldest loaded
+      // timestamp would skip messages between the initial batch and full history.
+      // mergeMessagesIntoState handles deduplication of overlapping messages.
       let nip4Done = false;
       let nip17Done = !enableNIP17;
-      let nip4Until: number | null = nip4OldestTimestamp;
-      let nip17Until: number | null = nip17OldestTimestamp;
+      let nip4Until: number | null = null;
+      let nip17Until: number | null = null;
 
       while (!nip4Done || !nip17Done) {
         const promises: Promise<NostrEvent[]>[] = [];
@@ -1665,15 +1668,17 @@ export function DMProvider({ children, config }: DMProviderProps) {
       }
 
       hasLoadedFullHistoryRef.current = true;
+      setHasLoadedFullHistory(true);
       setCanLoadOlder(false);
       setOlderMessagesCount(null);
+      setHasReachedNip17RelayEnd(true);
       setShouldSaveImmediately(true);
     } catch (error) {
       console.error('[DM] Error loading older conversations:', error);
     } finally {
       setIsLoadingOlder(false);
     }
-  }, [isLoadingOlder, userPubkey, nostr, messages, enableNIP17, decryptNIP4Message, createEmptyParticipant, sortAndUpdateParticipantState, mergeMessagesIntoState, processNIP17GiftWrap]);
+  }, [isLoadingOlder, userPubkey, nostr, enableNIP17, decryptNIP4Message, createEmptyParticipant, sortAndUpdateParticipantState, mergeMessagesIntoState, processNIP17GiftWrap]);
 
   // Load conversation from relay (per-chat pagination)
   const loadConversationFromRelay = useCallback(async (partnerPubkey: string): Promise<number> => {
@@ -1834,12 +1839,14 @@ export function DMProvider({ children, config }: DMProviderProps) {
   }, [enabled]);
 
   // Detect relay changes and reload messages
+  // Skip during initial load sequence — NostrSync often updates relays mid-load,
+  // which would otherwise trigger a spurious clearCacheAndRefetch (double load bug)
   useEffect(() => {
     const relayChanged = JSON.stringify(previousRelayMetadata.current) !== JSON.stringify(appConfig.relayMetadata);
 
     previousRelayMetadata.current = appConfig.relayMetadata;
 
-    if (relayChanged && enabled && userPubkey && hasInitialLoadCompleted) {
+    if (relayChanged && enabled && userPubkey && hasInitialLoadCompleted && !isInitialLoadSequenceRef.current) {
       clearCacheAndRefetch();
     }
   }, [enabled, userPubkey, appConfig.relayMetadata, hasInitialLoadCompleted, clearCacheAndRefetch]);
@@ -2054,6 +2061,20 @@ export function DMProvider({ children, config }: DMProviderProps) {
     }
   }, [enabled, messages, shouldSaveImmediately, writeAllMessagesToStore, triggerDebouncedWrite]);
 
+  // Flush cache on page unload (F5, tab close, navigation).
+  // writeAllMessagesToStore is async (IndexedDB), but modern browsers complete
+  // pending IDB transactions during page unload. This prevents conversations
+  // from disappearing and keeps the cache in sync with persisted read counts.
+  const writeAllMessagesToStoreRef = useRef(writeAllMessagesToStore);
+  writeAllMessagesToStoreRef.current = writeAllMessagesToStore;
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      writeAllMessagesToStoreRef.current();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
   // Send message
   const sendMessage = useCallback(async (params: {
     recipientPubkey: string;
@@ -2131,6 +2152,8 @@ export function DMProvider({ children, config }: DMProviderProps) {
     loadConversationFromRelay,
     getConversationMeta,
     hasReachedNip17RelayEnd,
+    oldestNip17GiftWrapTimestamp,
+    hasLoadedFullHistory,
   };
 
   return (

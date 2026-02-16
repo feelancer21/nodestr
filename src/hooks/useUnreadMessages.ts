@@ -1,60 +1,100 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useDMContext } from './useDMContext';
 import { useCurrentUser } from './useCurrentUser';
 
-const STORAGE_KEY_PREFIX = 'nostr:dm-last-read:';
+// Count-based unread tracking: stores the number of incoming messages
+// at the time the user last opened each conversation. Unread = current
+// incoming count minus stored count. Timestamps are irrelevant — any
+// newly loaded message (including old ones via "Load all") counts.
+const STORAGE_KEY_PREFIX = 'nostr:dm-read-counts:';
 
-interface LastReadMap {
+interface ReadCountMap {
   [pubkey: string]: number;
 }
 
 export function useUnreadMessages() {
   const { user } = useCurrentUser();
   const { messages } = useDMContext();
-  const [lastRead, setLastRead] = useState<LastReadMap>({});
+  const [readCounts, setReadCounts] = useState<ReadCountMap>({});
+
+  // Refs for stable callbacks and synchronous access during page unload
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const userPubkeyRef = useRef(user?.pubkey);
+  userPubkeyRef.current = user?.pubkey;
+  const readCountsRef = useRef<ReadCountMap>({});
 
   // Load from localStorage on mount / user change
   useEffect(() => {
     if (!user?.pubkey) {
-      setLastRead({});
+      setReadCounts({});
+      readCountsRef.current = {};
       return;
     }
     try {
       const stored = localStorage.getItem(STORAGE_KEY_PREFIX + user.pubkey);
-      if (stored) setLastRead(JSON.parse(stored));
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setReadCounts(parsed);
+        readCountsRef.current = parsed;
+      }
     } catch { /* ignore corrupt data */ }
   }, [user?.pubkey]);
 
   // Persist to localStorage
-  const persistLastRead = useCallback((updated: LastReadMap) => {
+  const persistReadCounts = useCallback((updated: ReadCountMap) => {
     if (!user?.pubkey) return;
     try {
       localStorage.setItem(STORAGE_KEY_PREFIX + user.pubkey, JSON.stringify(updated));
     } catch { /* localStorage full or unavailable */ }
   }, [user?.pubkey]);
 
-  // Mark a conversation as read (called when user selects a conversation)
+  // Count incoming messages for a conversation (messages from others)
+  const countIncoming = useCallback((pubkey: string): number => {
+    const participant = messagesRef.current.get(pubkey);
+    if (!participant) return 0;
+    const userPk = userPubkeyRef.current;
+    return participant.messages.filter(msg => msg.pubkey !== userPk).length;
+  }, []);
+
+  // Mark a conversation as read (called when user views a conversation).
+  // Writes to localStorage FIRST (synchronous) so the count is persisted
+  // even during page unload when React state updates may not execute.
   const markAsRead = useCallback((conversationPubkey: string) => {
-    const now = Math.floor(Date.now() / 1000);
-    setLastRead(prev => {
-      const updated = { ...prev, [conversationPubkey]: now };
-      persistLastRead(updated);
-      return updated;
-    });
-  }, [persistLastRead]);
+    const count = countIncoming(conversationPubkey);
+    const current = readCountsRef.current;
+    if (current[conversationPubkey] === count) return;
+    const updated = { ...current, [conversationPubkey]: count };
+    readCountsRef.current = updated;
+    persistReadCounts(updated);
+    setReadCounts(updated);
+  }, [countIncoming, persistReadCounts]);
+
+  // Silently persist read count for the currently viewed conversation.
+  // Updates localStorage + ref but NOT React state, so badges remain visible
+  // in the UI. This keeps localStorage continuously in sync while viewing,
+  // making the count survive F5/page close without relying on beforeunload.
+  const persistReadCountForViewed = useCallback((conversationPubkey: string) => {
+    const current = readCountsRef.current;
+    if (!(conversationPubkey in current)) return; // Don't silently mark "never read"
+    const count = countIncoming(conversationPubkey);
+    if (current[conversationPubkey] === count) return;
+    const updated = { ...current, [conversationPubkey]: count };
+    readCountsRef.current = updated;
+    persistReadCounts(updated);
+    // Intentionally NO setReadCounts — badges must stay visible
+  }, [countIncoming, persistReadCounts]);
 
   // Mark ALL conversations as read
   const markAllAsRead = useCallback(() => {
-    const now = Math.floor(Date.now() / 1000);
-    setLastRead(prev => {
-      const updated = { ...prev };
-      messages.forEach((_participant, pubkey) => {
-        updated[pubkey] = now;
-      });
-      persistLastRead(updated);
-      return updated;
+    const updated = { ...readCountsRef.current };
+    messagesRef.current.forEach((_participant, pubkey) => {
+      updated[pubkey] = countIncoming(pubkey);
     });
-  }, [messages, persistLastRead]);
+    readCountsRef.current = updated;
+    persistReadCounts(updated);
+    setReadCounts(updated);
+  }, [countIncoming, persistReadCounts]);
 
   // Calculate unread counts from messages state
   const unreadCounts = useMemo(() => {
@@ -62,10 +102,21 @@ export function useUnreadMessages() {
     let total = 0;
 
     messages.forEach((participant, pubkey) => {
-      const cutoff = lastRead[pubkey] || 0;
-      const unread = participant.messages.filter(
-        msg => msg.created_at > cutoff && msg.pubkey !== user?.pubkey
+      const hasBeenRead = pubkey in readCounts;
+      const currentIncoming = participant.messages.filter(
+        msg => msg.pubkey !== user?.pubkey
       ).length;
+
+      let unread: number;
+      if (!hasBeenRead) {
+        // Never opened this conversation: treat as unread.
+        // Use actual incoming count, but at least 1 so the conversation
+        // appears "new" even when only outgoing messages are loaded so far.
+        unread = Math.max(currentIncoming, 1);
+      } else {
+        unread = Math.max(0, currentIncoming - readCounts[pubkey]);
+      }
+
       if (unread > 0) {
         counts.set(pubkey, unread);
         total += unread;
@@ -73,12 +124,13 @@ export function useUnreadMessages() {
     });
 
     return { counts, total };
-  }, [messages, lastRead, user?.pubkey]);
+  }, [messages, readCounts, user?.pubkey]);
 
   return {
     unreadCounts: unreadCounts.counts,
     totalUnread: unreadCounts.total,
     markAsRead,
     markAllAsRead,
+    persistReadCountForViewed,
   };
 }

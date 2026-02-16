@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import { CheckCheck, Info, Loader2 } from 'lucide-react';
+import { CheckCheck, Download, Info, Loader2 } from 'lucide-react';
 import { useDMContext } from '@/hooks/useDMContext';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useUnread } from '@/hooks/useUnread';
@@ -200,6 +200,37 @@ export const DMConversationList = ({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {canLoadOlder && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={loadOlderMessages}
+                    disabled={isLoadingOlder}
+                    aria-label="Load all messages"
+                  >
+                    {isLoadingOlder ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    {isLoadingOlder
+                      ? 'Loading all messages...'
+                      : olderMessagesCount
+                        ? `Load all messages (~${formatNumber(olderMessagesCount.count)} more)`
+                        : 'Load all messages'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {totalUnread > 0 && (
             <TooltipProvider>
               <Tooltip>
@@ -261,27 +292,6 @@ export const DMConversationList = ({
                 />
               ))}
             </div>
-            {canLoadOlder && (
-              <div className="p-4 text-center">
-                <Button
-                  variant="ghost"
-                  className="text-xs text-muted-foreground"
-                  onClick={loadOlderMessages}
-                  disabled={isLoadingOlder}
-                >
-                  {isLoadingOlder ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                      Loading older conversations...
-                    </>
-                  ) : olderMessagesCount ? (
-                    `Load older conversations (~${formatNumber(olderMessagesCount.count)} more messages)`
-                  ) : (
-                    'Load older conversations'
-                  )}
-                </Button>
-              </div>
-            )}
           </ScrollArea>
         )}
       </div>
