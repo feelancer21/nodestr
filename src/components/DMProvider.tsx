@@ -677,6 +677,72 @@ export function DMProvider({ children, config }: DMProviderProps) {
         setOldestNip17GiftWrapTimestamp(prev =>
           prev === null ? oldestGiftWrapTs : Math.min(prev, oldestGiftWrapTs));
 
+        // NIP-17 gap-fill: Gift wraps have randomized timestamps (up to 2 days
+        // in the past). A limit-based query returns the N newest by gift-wrap
+        // timestamp, but messages whose gift-wrap timestamp was randomized below
+        // the cutoff are missed. Query the gap to catch them.
+        if (sinceTimestamp === undefined) {
+          const TWO_DAYS = 2 * 24 * 60 * 60;
+          // Use gift-wrap timestamp (not real timestamp) as base for gap-fill.
+          // Gift wraps are fuzzed ±2d, so extending 2d below the oldest gift-wrap
+          // ensures we catch wraps whose randomized timestamp fell below the batch.
+          const gapSince = oldestGiftWrapTs - TWO_DAYS;
+          const gapUntil = oldestGiftWrapTs;
+
+          console.log(`[DM] NIP-17 gap-fill: querying [${new Date(gapSince * 1000).toISOString()}..${new Date(gapUntil * 1000).toISOString()}]`);
+          try {
+            const gapFilters = [
+              { kinds: [1059], '#p': [user!.pubkey], since: gapSince, until: gapUntil }
+            ];
+            const gapEvents = await nostr.query(gapFilters, {
+              signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT)
+            });
+
+            if (gapEvents.length > 0) {
+              console.log(`[DM] NIP-17 gap-fill: found ${gapEvents.length} additional gift wraps`);
+              const gapState = new Map();
+
+              for (const giftWrap of gapEvents) {
+                try {
+                  const { processedMessage, conversationPartner, sealEvent } = await processNIP17GiftWrap(giftWrap);
+                  if (processedMessage.error) continue;
+
+                  const msg: DecryptedMessage = {
+                    ...sealEvent,
+                    created_at: processedMessage.created_at,
+                    decryptedEvent: { ...processedMessage, content: processedMessage.decryptedContent } as NostrEvent,
+                    decryptedContent: processedMessage.decryptedContent,
+                    originalGiftWrapId: giftWrap.id,
+                  };
+
+                  if (!gapState.has(conversationPartner)) {
+                    gapState.set(conversationPartner, createEmptyParticipant());
+                  }
+                  gapState.get(conversationPartner)!.messages.push(msg);
+                  gapState.get(conversationPartner)!.hasNIP17 = true;
+                } catch (error) {
+                  console.error('[DM] Error processing gap-fill gift wrap:', error);
+                }
+              }
+
+              gapState.forEach(participant => sortAndUpdateParticipantState(participant));
+              mergeMessagesIntoState(gapState, epoch);
+
+              // Update gift wrap cursor if gap-fill found older wraps
+              const gapOldestGw = gapEvents.reduce((min, gw) =>
+                gw.created_at < min ? gw.created_at : min, gapEvents[0].created_at);
+              if (gapOldestGw < oldestGiftWrapTs) {
+                setOldestNip17GiftWrapTimestamp(prev =>
+                  prev === null ? gapOldestGw : Math.min(prev, gapOldestGw));
+              }
+            } else {
+              console.log('[DM] NIP-17 gap-fill: no additional gift wraps found');
+            }
+          } catch (error) {
+            console.warn('[DM] NIP-17 gap-fill query failed (non-critical):', error);
+          }
+        }
+
         const currentTime = Math.floor(Date.now() / 1000);
         setLastSync(prev => ({ ...prev, nip17: currentTime }));
 
@@ -1658,7 +1724,67 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
           // Update cursor
           const oldest = nip17Events.reduce((min, e) => e.created_at < min ? e.created_at : min, nip17Events[0].created_at);
-          nip17Until = oldest - 1;
+
+          // NIP-17 gap-fill for this batch: catch gift wraps whose randomized
+          // timestamp fell below the batch's oldest gift-wrap timestamp.
+          // Use gift-wrap timestamp (not real timestamp) as base — matches per-chat approach.
+          // With gapSince = oldest - TWO_DAYS, the condition gapSince < gapUntil is always true.
+          {
+            const TWO_DAYS = 2 * 24 * 60 * 60;
+            const gapSince = oldest - TWO_DAYS;
+            const gapUntil = oldest;
+
+            console.log(`[DM] NIP-17 gap-fill (Load All): querying [${new Date(gapSince * 1000).toISOString()}..${new Date(gapUntil * 1000).toISOString()}]`);
+            try {
+              const gapFilters: NostrFilter[] = [
+                { kinds: [1059], '#p': [userPubkey], since: gapSince, until: gapUntil }
+              ];
+              const gapEvents = await pool.query(gapFilters, {
+                signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT)
+              });
+
+              if (gapEvents.length > 0) {
+                console.log(`[DM] NIP-17 gap-fill (Load All): found ${gapEvents.length} additional gift wraps`);
+                const gapState = new Map<string, ParticipantData>();
+
+                for (const giftWrap of gapEvents) {
+                  try {
+                    const { processedMessage, conversationPartner, sealEvent } = await processNIP17GiftWrap(giftWrap);
+                    if (processedMessage.error) continue;
+
+                    const msg: DecryptedMessage = {
+                      ...sealEvent,
+                      created_at: processedMessage.created_at,
+                      decryptedEvent: { ...processedMessage, content: processedMessage.decryptedContent } as NostrEvent,
+                      decryptedContent: processedMessage.decryptedContent,
+                      originalGiftWrapId: giftWrap.id,
+                    };
+
+                    if (!gapState.has(conversationPartner)) {
+                      gapState.set(conversationPartner, createEmptyParticipant());
+                    }
+                    gapState.get(conversationPartner)!.messages.push(msg);
+                    gapState.get(conversationPartner)!.hasNIP17 = true;
+                  } catch (error) {
+                    console.error('[DM] Error processing gap-fill gift wrap (Load All):', error);
+                  }
+                }
+
+                gapState.forEach(participant => sortAndUpdateParticipantState(participant));
+                mergeMessagesIntoState(gapState, epoch);
+
+                // Extend cursor if gap-fill found even older gift wraps
+                const gapOldestGw = gapEvents.reduce((min, gw) =>
+                  gw.created_at < min ? gw.created_at : min, gapEvents[0].created_at);
+                nip17Until = Math.min(gapOldestGw, oldest) - 1;
+              } else {
+                nip17Until = oldest - 1;
+              }
+            } catch (error) {
+              console.warn('[DM] NIP-17 gap-fill (Load All) failed (non-critical):', error);
+              nip17Until = oldest - 1;
+            }
+          }
         }
         if (!nip17Done && nip17Events.length < BATCH_SIZE) {
           nip17Done = true;
@@ -1761,6 +1887,43 @@ export function DMProvider({ children, config }: DMProviderProps) {
 
         if (nip17Events.length < CONVERSATION_FETCH_LIMIT_NIP17) {
           setHasReachedNip17RelayEnd(true);
+        }
+
+        // NIP-17 gap-fill for per-chat pagination.
+        // Gift wraps have randomized timestamps (up to 2 days in the past).
+        // Use the oldest gift-wrap timestamp as a conservative proxy: query
+        // (oldest_giftwrap - 2_days)..oldest_giftwrap to catch missed wraps.
+        // Deduplication in addMessageToState handles any overlap.
+        if (batchOldestGiftWrap < Infinity && nip17Events.length > 0) {
+          const TWO_DAYS = 2 * 24 * 60 * 60;
+          const gapSince = batchOldestGiftWrap - TWO_DAYS;
+          const gapUntil = batchOldestGiftWrap;
+
+          console.log(`[DM] NIP-17 gap-fill (per-chat): querying [${new Date(gapSince * 1000).toISOString()}..${new Date(gapUntil * 1000).toISOString()}]`);
+          try {
+            const gapFilters = [
+              { kinds: [1059], '#p': [user.pubkey], since: gapSince, until: gapUntil }
+            ];
+            const gapEvents = await nostr.query(gapFilters, {
+              signal: AbortSignal.timeout(DM_CONSTANTS.NIP17_QUERY_TIMEOUT)
+            });
+
+            if (gapEvents.length > 0) {
+              console.log(`[DM] NIP-17 gap-fill (per-chat): found ${gapEvents.length} additional gift wraps`);
+              for (const giftWrap of gapEvents) {
+                await processIncomingNIP17Message(giftWrap);
+              }
+              // Update cursor if gap-fill found older gift wraps
+              const gapOldestGw = gapEvents.reduce((min, gw) =>
+                gw.created_at < min ? gw.created_at : min, gapEvents[0].created_at);
+              if (gapOldestGw < batchOldestGiftWrap) {
+                setOldestNip17GiftWrapTimestamp(prev =>
+                  prev === null ? gapOldestGw : Math.min(prev, gapOldestGw));
+              }
+            }
+          } catch (error) {
+            console.warn('[DM] NIP-17 gap-fill (per-chat) failed (non-critical):', error);
+          }
         }
 
         // Count NIP-17 events processed (approximate — includes other conversations)
