@@ -824,7 +824,6 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
               }
             }}
             onKeyDown={handleKeyDown}
-            disabled={isSending}
           />
           <EmojiPickerButton
             onEmojiSelect={(emoji) => {
@@ -847,6 +846,7 @@ export const DMChatArea = ({ pubkey, isMobile, className, onDraftsChange }: DMCh
             disabled={isSending}
           />
           <Button
+            onPointerDown={(e) => e.preventDefault()}
             onClick={handleSend}
             disabled={!messageText.trim() || isSending}
             size="icon"

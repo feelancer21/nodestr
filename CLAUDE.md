@@ -651,6 +651,18 @@ When modifying UI state flags that influence user-facing behavior (e.g., `canLoa
 
 `navigator.clipboard.writeText()` only works in **secure contexts** (HTTPS or localhost). Every copy-to-clipboard implementation **must** include a `document.execCommand('copy')` fallback. Reference: `src/components/clip/CopyButton.tsx`.
 
+### Focus Preservation on Button Click (Touch vs Mouse)
+
+On touch devices, the event order is: `pointerdown` → `touchstart` → `touchend` → `mousedown` → `click`. A button's `onMouseDown` with `preventDefault()` fires **after** `touchstart` has already stolen focus from the input. Use `onPointerDown` instead — it fires before `touchstart` and works on both desktop (mouse) and mobile (touch).
+
+```tsx
+// Good - works on both desktop and mobile
+<Button onPointerDown={(e) => e.preventDefault()} onClick={handleSend}>
+
+// Bad - only works on desktop, too late for touch events
+<Button onMouseDown={(e) => e.preventDefault()} onClick={handleSend}>
+```
+
 ### Auto-Scroll in ScrollArea (ResizeObserver Pattern)
 
 When implementing "scroll to bottom on new content" inside a Radix ScrollArea, do **not** rely on React `useEffect` with `messages.length` — the effect fires before the DOM is updated. Instead, use a `ResizeObserver` on the scroll viewport's content element:

@@ -366,3 +366,4 @@ When hitting a STOP condition, clearly explain:
 - Be explicit, structured, and concise.
 - Prefer clarity over brevity.
 - Always optimize for correctness, maintainability, and alignment with the Product Owner's goals.
+- When a change affects mobile interactions, analyze the full lifecycle: User gesture → State changes → DOM disable/enable → Focus → Soft keyboard. A `disabled` attribute set during an async operation will dismiss the mobile keyboard, and programmatic `focus()` cannot reliably restore it without a fresh user gesture.
