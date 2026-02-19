@@ -1,5 +1,6 @@
 import { getEventHash, verifyEvent } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
+import { verifyLightningSignature } from '@/lib/lnVerify';
 
 export const CLIP_KIND = 38171;
 export type ClipKind = 0 | 1;
@@ -114,12 +115,39 @@ function contentSizeWithinLimit(content: string): boolean {
   return new TextEncoder().encode(content).length <= MAX_CONTENT_BYTES;
 }
 
-function hasValidLightningSignature(tags: string[][]): boolean {
-  const sigs = getAllTagValues(tags, 'sig');
-  if (sigs.length !== 1) return false;
-  const [sig] = sigs;
-  if (!sig) return false;
-  return ZBASE32_REGEX.test(sig);
+/**
+ * Computes the event hash (ID) for an event with all 'sig' tags removed.
+ * This matches the Go reference: event.copyWithoutSig().GetID()
+ */
+function computeEventHashWithoutSigTag(event: NostrEvent): string {
+  const filteredTags = (event.tags ?? []).filter(tag => tag[0] !== 'sig');
+  const copy = { ...event, tags: filteredTags };
+  return getEventHash(copy);
+}
+
+/**
+ * Full cryptographic verification of a Lightning signature on a Node Announcement (k=0).
+ * Replaces the previous regex-only check with secp256k1 signature recovery and pubkey comparison.
+ *
+ * Matches Go reference: event.go Verify() → checkLightningSig() → Hash() → zbase32 decode →
+ * double SHA256 → RecoverCompact → pubkey compare
+ */
+function verifyAnnouncementLightningSignature(
+  event: NostrEvent,
+  identifier: ClipIdentifier,
+): { valid: boolean; error?: string } {
+  const sigs = getAllTagValues(event.tags ?? [], 'sig');
+  if (sigs.length !== 1) {
+    return { valid: false, error: `expected exactly 1 sig tag, got ${sigs.length}` };
+  }
+
+  const sig = sigs[0];
+  if (!ZBASE32_REGEX.test(sig)) {
+    return { valid: false, error: 'sig tag is not valid zbase32' };
+  }
+
+  const eventHash = computeEventHashWithoutSigTag(event);
+  return verifyLightningSignature(eventHash, sig, identifier.pubkey);
 }
 
 export function verifyClipEvent(event: NostrEvent, nowSeconds = Math.floor(Date.now() / 1000)) {
@@ -155,8 +183,9 @@ export function verifyClipEvent(event: NostrEvent, nowSeconds = Math.floor(Date.
   }
 
   if (identifier.kind === CLIP_ANNOUNCEMENT) {
-    if (!hasValidLightningSignature(event.tags ?? [])) {
-      return { ok: false, reason: 'invalid lightning signature' };
+    const lnSigResult = verifyAnnouncementLightningSignature(event, identifier);
+    if (!lnSigResult.valid) {
+      return { ok: false, reason: lnSigResult.error || 'invalid lightning signature' };
     }
   }
 

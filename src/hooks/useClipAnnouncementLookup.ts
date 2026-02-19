@@ -28,7 +28,7 @@ export function useClipAnnouncementLookup(lightningPubkeys: string[]) {
 
       console.log('[useClipAnnouncementLookup] Querying announcements for pubkeys:', lightningPubkeys);
 
-      const events = await nostr.query([filter], { signal });
+      const events = await nostr.query([filter], { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
       const now = Math.floor(Date.now() / 1000);
       const result: AnnouncementMap = {};
 
@@ -67,6 +67,6 @@ export function useClipAnnouncementLookup(lightningPubkeys: string[]) {
       return result;
     },
     enabled: lightningPubkeys.length > 0,
-    staleTime: 60_000,
+    staleTime: 300_000,
   });
 }

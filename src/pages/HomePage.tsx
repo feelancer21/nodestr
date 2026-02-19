@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useSeoMeta } from '@unhead/react';
 import { nip19 } from 'nostr-tools';
-import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
@@ -28,10 +27,6 @@ export function HomePage() {
               {feedEvents?.length ?? 0} events
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-            <span>Events are filtered locally; Lightning signature crypto checks are not enabled yet.</span>
-          </p>
         </div>
 
         {feed.isLoading && (

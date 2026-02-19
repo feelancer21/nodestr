@@ -35,6 +35,7 @@ export function useClipFeed() {
             [
               {
                 kinds: [CLIP_KIND],
+                '#k': ['0'],
                 since: announcementsSince,
                 limit: 500,
               },
@@ -69,6 +70,7 @@ export function useClipFeed() {
             [
               {
                 kinds: [CLIP_KIND],
+                '#k': ['1'],
                 since: feedSince,
                 limit: 500,
               },
@@ -99,6 +101,7 @@ export function useClipFeed() {
       console.log('[useClipFeed] Feed complete, total events:', events.length);
       return events.sort((a, b) => b.event.created_at - a.event.created_at);
     },
+    staleTime: 300_000,
     refetchInterval: 30000,
   });
 }

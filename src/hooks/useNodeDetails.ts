@@ -42,7 +42,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
       return exactMatch;
     },
     enabled: hasApi && pubkey.length > 0 && isValidLightningPubkey(pubkey),
-    staleTime: 60_000, // 1 minute
+    staleTime: 300_000,
   });
 
   // Lookup CLIP announcement for this Lightning pubkey
@@ -68,7 +68,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
 
       console.log('[useNodeDetails] Querying Node Info with d-tag:', nodeInfoDTag);
 
-      const events = await nostr.query([filter], { signal });
+      const events = await nostr.query([filter], { signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]) });
       const now = Math.floor(Date.now() / 1000);
 
       console.log('[useNodeDetails] Received Node Info events:', events.length);
@@ -115,7 +115,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
       return { event: latestEvent, content };
     },
     enabled: pubkey.length > 0 && isValidLightningPubkey(pubkey),
-    staleTime: 60_000,
+    staleTime: 300_000,
   });
 
   // Build operator info

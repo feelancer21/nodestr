@@ -54,6 +54,7 @@ export function useOperatorProfile(pubkey: string) {
           [
             {
               kinds: [CLIP_KIND],
+              '#k': ['0'],
               authors: [pubkey],
               since: announcementsSince,
               limit: 500,
@@ -78,6 +79,7 @@ export function useOperatorProfile(pubkey: string) {
           [
             {
               kinds: [CLIP_KIND],
+              '#k': ['1'],
               authors: [pubkey],
               since: feedSince,
               limit: 500,
@@ -105,6 +107,53 @@ export function useOperatorProfile(pubkey: string) {
       const operatedNodePubkeys = new Set(
         announcements.map((stored) => stored.identifier.pubkey)
       );
+
+      // Cross-reference: check if another Nostr key published a newer announcement for any of these nodes
+      if (operatedNodePubkeys.size > 0) {
+        try {
+          const crossRefEvents = await nostr.query(
+            [
+              {
+                kinds: [CLIP_KIND],
+                '#k': ['0'],
+                '#d': Array.from(operatedNodePubkeys),
+              },
+            ],
+            { signal }
+          );
+
+          // For each Lightning node, find the latest valid announcement from any author
+          const latestAnnouncementByNode = new Map<string, { nostrPubkey: string; createdAt: number }>();
+
+          for (const event of crossRefEvents) {
+            const result = verifyClipEvent(event, now);
+            if (!result.ok || !result.identifier || result.identifier.kind !== CLIP_ANNOUNCEMENT) {
+              continue;
+            }
+
+            const lnPubkey = result.identifier.pubkey;
+            const existing = latestAnnouncementByNode.get(lnPubkey);
+
+            if (!existing || event.created_at > existing.createdAt) {
+              latestAnnouncementByNode.set(lnPubkey, {
+                nostrPubkey: event.pubkey,
+                createdAt: event.created_at,
+              });
+            }
+          }
+
+          // Remove nodes where the latest announcement is from a different Nostr key
+          for (const lnPubkey of Array.from(operatedNodePubkeys)) {
+            const latest = latestAnnouncementByNode.get(lnPubkey);
+            if (latest && latest.nostrPubkey !== pubkey) {
+              operatedNodePubkeys.delete(lnPubkey);
+            }
+          }
+        } catch (error) {
+          // Cross-reference failure is non-fatal; proceed with local data
+          console.warn('[useOperatorProfile] Cross-reference query failed:', error);
+        }
+      }
 
       // Extract node info for these nodes
       const allNodeInfos = store.getEvents(CLIP_NODE_INFO);
@@ -183,6 +232,7 @@ export function useOperatorProfile(pubkey: string) {
         events: timelineEvents,
       } as OperatorProfile;
     },
+    staleTime: 300_000,
     refetchInterval: 30000,
   });
 }
