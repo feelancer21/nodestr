@@ -59,7 +59,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
   const nodeInfoDTag = `1:${pubkey}:${network}`;
   const nodeInfoQuery = useQuery({
     queryKey: ['clip-node-info', pubkey, network],
-    queryFn: async ({ signal }): Promise<NodeInfoData | undefined> => {
+    queryFn: async ({ signal }): Promise<NodeInfoData | null> => {
       const filter = {
         kinds: [CLIP_KIND],
         '#k': ['1'], // Node Info
@@ -99,7 +99,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
 
       if (!latestEvent) {
         console.log('[useNodeDetails] No valid Node Info event found');
-        return undefined;
+        return null;
       }
 
       console.log('[useNodeDetails] Found valid Node Info event:', latestEvent.id);
@@ -114,7 +114,7 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
 
       return { event: latestEvent, content };
     },
-    enabled: pubkey.length > 0 && isValidLightningPubkey(pubkey),
+    enabled: pubkey.length > 0 && isValidLightningPubkey(pubkey) && announcement !== null,
     staleTime: 300_000,
   });
 
@@ -132,8 +132,8 @@ export function useNodeDetails(pubkey: string, network: Network): UseNodeDetails
   return {
     node: nodeQuery.data,
     operator,
-    nodeInfo: nodeInfoQuery.data,
-    isLoading: nodeQuery.isLoading || announcementQuery.isLoading || nodeInfoQuery.isLoading,
+    nodeInfo: nodeInfoQuery.data ?? undefined,
+    isLoading: nodeQuery.isLoading || announcementQuery.isLoading || (announcement !== null && nodeInfoQuery.isLoading),
     isError: nodeQuery.isError,
   };
 }
