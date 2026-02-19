@@ -6,11 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useClipFeed } from '@/hooks/useClipFeed';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClipEventCard } from '@/components/clip';
+import { CLIP_ANNOUNCEMENT } from '@/lib/clip';
 
 export function HomePage() {
   const navigate = useNavigate();
   const feed = useClipFeed();
   const feedEvents = feed.data ?? [];
+  const announcementCount = feedEvents.filter(e => e.identifier.kind === CLIP_ANNOUNCEMENT).length;
 
   useSeoMeta({
     title: 'nodestr — Lightning Nodes on Nostr',
@@ -25,6 +27,9 @@ export function HomePage() {
             <h2 className="text-lg font-semibold text-foreground">Feed</h2>
             <Badge variant="secondary" className="whitespace-nowrap">
               {feedEvents?.length ?? 0} events
+            </Badge>
+            <Badge variant="secondary" className="whitespace-nowrap">
+              {announcementCount} announcements
             </Badge>
           </div>
         </div>
