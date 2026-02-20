@@ -193,7 +193,7 @@ export function MobileHeader() {
                       href="https://github.com/feelancer21/nodestr"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-slate-300 hover:text-slate-500 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                       title="GitHub"
                     >
                       <Github className="h-4 w-4" />
@@ -202,7 +202,7 @@ export function MobileHeader() {
                       href="https://nostree.me/feelancer21@iris.to"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-slate-300 hover:text-slate-500 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                      className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                       title="Nostr"
                     >
                       <NostrIcon className="h-4 w-4" />
