@@ -85,6 +85,18 @@ async function copyText(text: string, containerElement: HTMLElement): Promise<bo
   return success;
 }
 
+/**
+ * Preserve multiple blank lines for ReactMarkdown rendering.
+ * Standard Markdown collapses \n\n\n+ into a single paragraph break.
+ * This inserts non-breaking space paragraphs for each extra blank line.
+ */
+export function preserveBlankLines(text: string): string {
+  return text.replace(/\n{3,}/g, (match) => {
+    const spacerCount = match.length - 2;
+    return '\n\n' + '\u00A0\n\n'.repeat(spacerCount);
+  });
+}
+
 /** Copy button for code block header (light-on-dark, with clipboard fallback) */
 function CodeCopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -229,7 +241,7 @@ export function MessageContent({ content, isFromMe, onQuoteClick }: MessageConte
           },
         }}
       >
-        {content}
+        {preserveBlankLines(content)}
       </ReactMarkdown>
     </div>
   );
